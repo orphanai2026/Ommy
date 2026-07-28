@@ -4,9 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>أمي — مدرّب القراءة العربية بالصوت</title>
-<meta name="app-version" content="v1.3.0">
+<meta name="app-version" content="v1.4.0">
 <meta name="copyright" content="© 2026 مشروع أمي. جميع الحقوق محفوظة.">
-<!-- التحديثات v1.3.0: لوحة تقدّم (دروس مكتملة، تسجيلات)، تخزين مؤقت لصوت TTS، تباين وأزرار أكبر لكبار السن -->
+<!-- التحديثات v1.4.0: مستويات صعوبة تصاعدية، قفل الدروس تدريجيًا، تحقق جاهزية بين المستويات -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -32,7 +32,7 @@
 </head>
 <body>
 <div id="app"><div class="shell" id="shell"></div></div>
-<div style="position:fixed;bottom:6px;left:50%;transform:translateX(-50%);font-size:10px;color:#8A968C;background:#FAF5EA;padding:2px 10px;border-radius:8px;z-index:999;">© 2026 أمي — جميع الحقوق محفوظة · v1.3.0</div>
+<div style="position:fixed;bottom:6px;left:50%;transform:translateX(-50%);font-size:10px;color:#8A968C;background:#FAF5EA;padding:2px 10px;border-radius:8px;z-index:999;">© 2026 أمي — جميع الحقوق محفوظة · v1.4.0</div>
 
 <script>
 const SUPABASE_URL = 'https://thdsfpjmzownaajfxmcv.supabase.co';
@@ -40,40 +40,40 @@ const SUPABASE_ANON_KEY = 'sb_publishable_ExsuZ-0hxNTFlz8AxHaozQ_Zxc_1bv-';
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 const FALLBACK_LESSONS = [
-  {id:1, num:'١', title:'بسم الله الرحمن الرحيم', text:'بسم الله الرحمن الرحيم', tag:'ديني'},
-  {id:2, num:'٢', title:'صباح الخير يا جارتي', text:'صباح الخير يا جارتي', tag:'يومي'},
-  {id:3, num:'٣', title:'الحمد لله على كل حال', text:'الحمد لله على كل حال', tag:'ديني'},
-  {id:4, num:'٤', title:'الشاي جاهز، تفضل', text:'الشاي جاهز تفضل', tag:'يومي'},
-  {id:5, num:'٥', title:'أين أقرب صيدلية؟', text:'من فضلك أين أقرب صيدلية', tag:'يومي'},
-  {id:6, num:'٦', title:'سبحان الله وبحمده', text:'سبحان الله وبحمده', tag:'ديني'},
-  {id:7, num:'٧', title:'مساء الخير والبركة عليكم', text:'مساء الخير والبركة عليكم', tag:'يومي'},
-  {id:8, num:'٨', title:'اللهم صل على النبي', text:'اللهم صل على النبي محمد', tag:'ديني'},
-  {id:9, num:'٩', title:'كيف حالك اليوم؟', text:'كيف حالك اليوم يا صاحبي', tag:'يومي'},
-  {id:10, num:'١٠', title:'الفطور جاهز على المائدة', text:'الفطور جاهز على المائدة تفضلوا', tag:'يومي'},
-  {id:11, num:'١١', title:'لا إله إلا الله', text:'لا إله إلا الله محمد رسول الله', tag:'ديني'},
-  {id:12, num:'١٢', title:'أحتاج موعدًا عند الطبيب', text:'أحتاج موعدًا عند الطبيب غدًا', tag:'يومي'},
-  {id:13, num:'١٣', title:'الله أكبر كبيرًا', text:'الله أكبر كبيرًا والحمد لله كثيرًا', tag:'ديني'},
-  {id:14, num:'١٤', title:'تصبح على خير', text:'تصبح على خير يا أهل البيت', tag:'يومي'},
-  {id:15, num:'١٥', title:'أستغفر الله العظيم', text:'أستغفر الله العظيم وأتوب إليه', tag:'ديني'},
-  {id:16, num:'١٦', title:'هل تحتاج مساعدة؟', text:'هل تحتاج مساعدة يا جاري', tag:'يومي'},
-  {id:17, num:'١٧', title:'ربنا آتنا في الدنيا حسنة', text:'ربنا آتنا في الدنيا حسنة وفي الآخرة حسنة', tag:'ديني'},
-  {id:18, num:'١٨', title:'الجو جميل اليوم', text:'الجو جميل اليوم فلنخرج للتنزه', tag:'يومي'},
-  {id:19, num:'١٩', title:'بارك الله فيك', text:'بارك الله فيك وجزاك خيرًا', tag:'ديني'},
-  {id:20, num:'٢٠', title:'الحساب كم يكون من فضلك؟', text:'الحساب كم يكون من فضلك', tag:'يومي'},
+  {id:1, num:'١', title:'بسم الله الرحمن الرحيم', text:'بسم الله الرحمن الرحيم', tag:'ديني', level:1},
+  {id:6, num:'٢', title:'سبحان الله وبحمده', text:'سبحان الله وبحمده', tag:'ديني', level:1},
+  {id:11, num:'٣', title:'لا إله إلا الله', text:'لا إله إلا الله محمد رسول الله', tag:'ديني', level:1},
+  {id:13, num:'٤', title:'الله أكبر كبيرًا', text:'الله أكبر كبيرًا والحمد لله كثيرًا', tag:'ديني', level:1},
+  {id:2, num:'٥', title:'صباح الخير يا جارتي', text:'صباح الخير يا جارتي', tag:'يومي', level:2},
+  {id:3, num:'٦', title:'الحمد لله على كل حال', text:'الحمد لله على كل حال', tag:'ديني', level:2},
+  {id:7, num:'٧', title:'مساء الخير والبركة عليكم', text:'مساء الخير والبركة عليكم', tag:'يومي', level:2},
+  {id:9, num:'٨', title:'كيف حالك اليوم؟', text:'كيف حالك اليوم يا صاحبي', tag:'يومي', level:2},
+  {id:4, num:'٩', title:'الشاي جاهز، تفضل', text:'الشاي جاهز تفضل', tag:'يومي', level:3},
+  {id:10, num:'١٠', title:'الفطور جاهز على المائدة', text:'الفطور جاهز على المائدة تفضلوا', tag:'يومي', level:3},
+  {id:14, num:'١١', title:'تصبح على خير', text:'تصبح على خير يا أهل البيت', tag:'يومي', level:3},
+  {id:18, num:'١٢', title:'الجو جميل اليوم', text:'الجو جميل اليوم فلنخرج للتنزه', tag:'يومي', level:3},
+  {id:5, num:'١٣', title:'أين أقرب صيدلية؟', text:'من فضلك أين أقرب صيدلية', tag:'يومي', level:4},
+  {id:12, num:'١٤', title:'أحتاج موعدًا عند الطبيب', text:'أحتاج موعدًا عند الطبيب غدًا', tag:'يومي', level:4},
+  {id:16, num:'١٥', title:'هل تحتاج مساعدة؟', text:'هل تحتاج مساعدة يا جاري', tag:'يومي', level:4},
+  {id:20, num:'١٦', title:'الحساب كم يكون من فضلك؟', text:'الحساب كم يكون من فضلك', tag:'يومي', level:4},
+  {id:8, num:'١٧', title:'اللهم صل على النبي', text:'اللهم صل على النبي محمد', tag:'ديني', level:5},
+  {id:15, num:'١٨', title:'أستغفر الله العظيم', text:'أستغفر الله العظيم وأتوب إليه', tag:'ديني', level:5},
+  {id:17, num:'١٩', title:'ربنا آتنا في الدنيا حسنة', text:'ربنا آتنا في الدنيا حسنة وفي الآخرة حسنة', tag:'ديني', level:5},
+  {id:19, num:'٢٠', title:'بارك الله فيك', text:'بارك الله فيك وجزاك خيرًا', tag:'ديني', level:5},
 ];
 const FALLBACK_SCENARIOS = [
-  {id:1, title:'قراءة علبة الدواء', text:'يُؤخذ قرص واحد بعد الطعام'},
-  {id:2, title:'رسالة من الابن', text:'بابا وصلت بالسلامة سأتصل بك مساءً'},
-  {id:3, title:'لافتة الشارع', text:'ممنوع الوقوف الطريق مغلق'},
-  {id:4, title:'قائمة الطعام', text:'دجاج مشوي مع الأرز خمسة وعشرون ريالا'},
-  {id:5, title:'وصفة طبية', text:'خذ الحبة مرتين يوميًا قبل النوم'},
-  {id:6, title:'إشعار البنك', text:'يرجى إدخال الرقم السري للمتابعة'},
-  {id:7, title:'موعد عيادة الطبيب', text:'موعدك الثلاثاء القادم الساعة العاشرة صباحًا'},
-  {id:8, title:'تعليمات المصعد الكهربائي', text:'يُرجى إطفاء الأنوار قبل المغادرة'},
-  {id:9, title:'تعليمات جهاز قياس الضغط', text:'اجلس بهدوء ثم اضغط على الزر الأخضر'},
-  {id:10, title:'إعلان في المسجد', text:'صلاة الجمعة الساعة الثانية عشرة والنصف'},
-  {id:11, title:'فاتورة الكهرباء', text:'المبلغ المستحق مئتان وخمسون ريالا'},
-  {id:12, title:'تذكرة الحافلة', text:'الرحلة القادمة الساعة الرابعة عصرًا من الرصيف الثالث'},
+  {id:3, title:'لافتة الشارع', text:'ممنوع الوقوف الطريق مغلق', level:1},
+  {id:1, title:'قراءة علبة الدواء', text:'يُؤخذ قرص واحد بعد الطعام', level:2},
+  {id:5, title:'وصفة طبية', text:'خذ الحبة مرتين يوميًا قبل النوم', level:2},
+  {id:4, title:'قائمة الطعام', text:'دجاج مشوي مع الأرز خمسة وعشرون ريالا', level:3},
+  {id:2, title:'رسالة من الابن', text:'بابا وصلت بالسلامة سأتصل بك مساءً', level:3},
+  {id:6, title:'إشعار البنك', text:'يرجى إدخال الرقم السري للمتابعة', level:3},
+  {id:8, title:'تعليمات المصعد الكهربائي', text:'يُرجى إطفاء الأنوار قبل المغادرة', level:4},
+  {id:7, title:'موعد عيادة الطبيب', text:'موعدك الثلاثاء القادم الساعة العاشرة صباحًا', level:4},
+  {id:9, title:'تعليمات جهاز قياس الضغط', text:'اجلس بهدوء ثم اضغط على الزر الأخضر', level:4},
+  {id:11, title:'فاتورة الكهرباء', text:'المبلغ المستحق مئتان وخمسون ريالا', level:5},
+  {id:10, title:'إعلان في المسجد', text:'صلاة الجمعة الساعة الثانية عشرة والنصف', level:5},
+  {id:12, title:'تذكرة الحافلة', text:'الرحلة القادمة الساعة الرابعة عصرًا من الرصيف الثالث', level:5},
 ];
 const ARABIC_NUMS = ['٠','١','٢','٣','٤','٥','٦','٧','٨','٩'];
 function toArabicNum(n) { return String(n).split('').map(d => ARABIC_NUMS[+d] ?? d).join(''); }
@@ -83,11 +83,11 @@ async function loadContent() {
   try {
     const { data: lessons, error: lErr } = await sb.from('lessons').select('*').order('order_index');
     if (!lErr && lessons && lessons.length) {
-      LESSONS = lessons.map((l,i) => ({ id: l.id, num: toArabicNum(i+1), title: l.title, text: l.body_text, tag: l.tag || '', audioUrl: l.audio_model_url || null, alignment: l.alignment_json || null }));
+      LESSONS = lessons.map((l,i) => ({ id: l.id, num: toArabicNum(i+1), title: l.title, text: l.body_text, tag: l.tag || '', level: l.difficulty_level || 1, audioUrl: l.audio_model_url || null, alignment: l.alignment_json || null }));
     }
     const { data: scenarios, error: scErr } = await sb.from('scenarios').select('*').order('order_index');
     if (!scErr && scenarios && scenarios.length) {
-      SCENARIOS = scenarios.map(sc => ({ id: sc.id, title: sc.title, text: sc.body_text, audioUrl: sc.audio_model_url || null, alignment: sc.alignment_json || null }));
+      SCENARIOS = scenarios.map(sc => ({ id: sc.id, title: sc.title, text: sc.body_text, level: sc.difficulty_level || 1, audioUrl: sc.audio_model_url || null, alignment: sc.alignment_json || null }));
     }
   } catch(e) { console.warn('content load failed, using fallback', e); }
 }
@@ -103,7 +103,7 @@ const state = {
   authLoading: false, mimicryStage: 'idle', fluencyStage: 'idle', fluencyElapsed: 0,
   activeScenarioId: 1, myRecordingUrl: null, micError: '', userId: null,
   streak: 0, completedCount: 0, totalLessons: 0, recordingsCount: 0, recentRecordings: [],
-  avgWpm: null, recordStartTs: null,
+  avgWpm: null, recordStartTs: null, readinessLevel: 0, completedLessonIds: new Set(), readinessTargetLevel: null,
 };
 let mediaRecorder = null, audioChunks = [], mediaStream = null, fluencyTimer = null, playTimer = null;
 
@@ -123,11 +123,30 @@ async function loadProgressStats() {
     const { count: completedCount } = await sb.from('lesson_progress').select('*', { count: 'exact', head: true }).eq('user_id', state.userId).eq('status', 'completed');
     state.completedCount = completedCount || 0;
     state.totalLessons = LESSONS.length;
+    const { data: completedRows } = await sb.from('lesson_progress').select('lesson_id').eq('user_id', state.userId).eq('status', 'completed');
+    state.completedLessonIds = new Set((completedRows||[]).map(r=>r.lesson_id));
     const { count: recordingsCount } = await sb.from('recordings').select('*', { count: 'exact', head: true }).eq('user_id', state.userId);
     state.recordingsCount = recordingsCount || 0;
     const { data: recent } = await sb.from('recordings').select('kind, created_at').eq('user_id', state.userId).order('created_at', { ascending: false }).limit(5);
     state.recentRecordings = recent || [];
   } catch(e) {}
+}
+function isLevelUnlocked(level) { return level <= 1 || state.readinessLevel >= level - 1; }
+function levelFullyCompleted(level) {
+  const lessonsInLevel = LESSONS.filter(l => l.level === level);
+  if (!lessonsInLevel.length) return false;
+  return lessonsInLevel.every(l => state.completedLessonIds.has(l.id));
+}
+function pendingReadinessLevel() {
+  const maxLevel = Math.max(...LESSONS.map(l=>l.level||1), 1);
+  for (let lvl = state.readinessLevel + 1; lvl <= maxLevel; lvl++) {
+    if (isLevelUnlocked(lvl) && levelFullyCompleted(lvl) && state.readinessLevel < lvl) return lvl;
+  }
+  return null;
+}
+async function passReadiness(level) {
+  state.readinessLevel = Math.max(state.readinessLevel, level);
+  await saveProfile({ readiness_level: state.readinessLevel });
 }
 
 async function loadStreak() {
@@ -154,6 +173,7 @@ async function loadProfile(userId) {
     state.track = profile.track || null;
     state.fontScaleIdx = idx >= 0 ? idx : 1;
     state.avgWpm = profile.avg_wpm || null;
+    state.readinessLevel = profile.readiness_level || 0;
     state.screen = profile.track ? 'home' : 'test';
     state.activeTab = 'home';
   }
@@ -343,9 +363,9 @@ function screens() {
   const currentScenario = SCENARIOS.find(sc=>sc.id===s.activeScenarioId) || SCENARIOS[0];
   const fs = FONT_SCALES[s.fontScaleIdx];
 
-  const topTitles = { home:'أمي', lessons:'الدروس', scenarios:'مواقف من الحياة', profile:'حسابي', lesson: currentLesson.title, mimicry:'قلّد القراءة', fluency:'القراءة المستقلة', 'scenario-detail': currentScenario.title };
+  const topTitles = { home:'أمي', lessons:'الدروس', scenarios:'مواقف من الحياة', profile:'حسابي', lesson: currentLesson.title, mimicry:'قلّد القراءة', fluency:'القراءة المستقلة', 'scenario-detail': currentScenario.title, readiness: 'تحقق الجاهزية' };
   const showTopBar = !['splash','test','track-suggest','auth-phone','auth-otp'].includes(s.screen);
-  const showBack = ['lesson','mimicry','fluency','scenario-detail'].includes(s.screen);
+  const showBack = ['lesson','mimicry','fluency','scenario-detail','readiness'].includes(s.screen);
   const showBottomNav = ['home','lessons','scenarios','profile'].includes(s.screen);
 
   let topbar = '';
@@ -391,8 +411,10 @@ function screens() {
       <button data-act="setnonnative" style="background:#fff;border:1px solid #E4D9C2;border-radius:20px;padding:20px;text-align:right;cursor:pointer;"><div style="font-size:17px;font-weight:800;color:#26333B;">${TRACKS.nonnative.title}</div><div style="font-size:13px;color:#5E6C72;margin-top:6px;">لإتقان الأصوات والحروف العربية خطوة بخطوة</div></button>
     </div>`;
   } else if (s.screen === 'home') {
+    const pendingLevel = pendingReadinessLevel();
     content = `<div style="flex:1;display:flex;flex-direction:column;padding:20px 18px;gap:18px;">
       <div style="display:flex;justify-content:space-between;align-items:center;"><div><div style="font-size:18px;font-weight:800;color:#26333B;">أهلاً بعودتك</div><div style="font-size:13px;color:#5E6C72;">استمر من حيث توقفت</div></div>${s.streak>0?`<div style="display:flex;align-items:center;gap:6px;background:${trackDef.accentSoft};border-radius:12px;padding:8px 12px;"><div style="width:8px;height:8px;border-radius:50%;background:${trackDef.accent};"></div><div style="font-size:13px;font-weight:700;color:#26333B;">${toArabicNum(s.streak)} ${s.streak===1?'يوم':'أيام'} متتالية</div></div>`:''}</div>
+      ${pendingLevel ? `<button data-act="openreadiness" data-id="${pendingLevel}" style="background:${trackDef.accent};border:none;border-radius:16px;padding:16px;text-align:right;cursor:pointer;color:#fff;"><div style="font-size:14px;font-weight:800;">أكملت المستوى الحالي! 🎉</div><div style="font-size:13px;margin-top:4px;opacity:0.9;">اضغط هنا لتحقق قصير يفتح المستوى التالي</div></button>` : ''}
       <div class="card" style="border-radius:20px;">
         <div style="font-size:13px;color:#8A968C;">الدرس التالي</div>
         <div style="font-size:19px;font-weight:800;color:#26333B;margin:8px 0 14px;">${currentLesson.title}</div>
@@ -503,6 +525,24 @@ function screens() {
         <button class="btn-primary" data-act="gohome" style="width:100%;">العودة للرئيسية</button>
       </div>`;
     }
+  } else if (s.screen === 'readiness') {
+    const level = s.readinessTargetLevel;
+    const sampleLesson = LESSONS.find(l => l.level === level) || LESSONS[0];
+    const mm=Math.floor(s.fluencyElapsed/60), ss=s.fluencyElapsed%60;
+    if (s.fluencyStage !== 'done') {
+      content = `<div style="flex:1;display:flex;flex-direction:column;padding:22px 18px;gap:18px;">
+        <div class="card" style="background:${trackDef.accentSoft};border-color:${trackDef.accent};"><div style="font-size:15px;font-weight:800;color:#26333B;">أحسنت! أكملت هذا المستوى</div><div style="font-size:13px;color:#3F4B50;margin-top:6px;line-height:1.7;">اقرأ الجملة التالية بصوتك بحرّية لفتح المستوى التالي، بدون أي تظليل.</div></div>
+        <div class="card" style="flex:1;display:flex;align-items:center;border-radius:20px;"><div style="font-size:21px;font-weight:600;line-height:2.1;">${sampleLesson.text}</div></div>
+        ${s.fluencyStage==='idle' ? `<button class="btn-primary" data-act="startreadinessreading">ابدأ القراءة</button>` : `<div style="text-align:center;font-size:15px;color:#8A968C;">${mm>0?mm+':'+(ss<10?'0':'')+ss+' دقيقة':ss+' ثانية'}</div><button class="btn-primary" data-act="finishreadinessreading" style="background:#B4802E;">أنهيت القراءة</button>`}
+      </div>`;
+    } else {
+      content = `<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;text-align:center;padding:22px;">
+        <div style="width:72px;height:72px;border-radius:50%;background:#3F8F5F;display:flex;align-items:center;justify-content:center;">${icon('<path d="M5 12l5 5L19 7" stroke="#fff" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>',30)}</div>
+        <div style="font-size:19px;font-weight:800;">فُتح المستوى التالي!</div>
+        <div style="font-size:14px;color:#5E6C72;">استمر في التقدّم بثقة</div>
+        <button class="btn-primary" data-act="gohome" style="width:100%;">إلى الرئيسية</button>
+      </div>`;
+    }
   } else if (s.screen === 'scenario-detail') {
     const tokens = tokensFor(currentScenario.text, 'word');
     const tokenIdx = s._playIdx ?? -1;
@@ -561,7 +601,20 @@ document.getElementById('app').addEventListener('click', async (e) => {
   if (!btn) return;
   const act = btn.dataset.act;
   const id = btn.dataset.id ? Number(btn.dataset.id) : null;
-  if (act==='goauth') state.screen='auth-phone';
+  else if (act==='goauth') state.screen='auth-phone';
+  else if (act==='openreadiness') { state.screen='readiness'; state.readinessTargetLevel=Number(id); state.fluencyStage='idle'; state.fluencyElapsed=0; }
+  else if (act==='startreadinessreading') {
+    state.fluencyStage='reading'; state.fluencyElapsed=0; render();
+    await startRecording();
+    fluencyTimer = setInterval(() => { state.fluencyElapsed++; render(); }, 1000);
+    return;
+  }
+  else if (act==='finishreadinessreading') {
+    if (fluencyTimer) clearInterval(fluencyTimer);
+    await stopRecordingAndSave('fluency', null, state.fluencyElapsed);
+    await passReadiness(state.readinessTargetLevel);
+    state.fluencyStage='done';
+  }
   else if (act==='sendotp') return sendOtp();
   else if (act==='verifyotp') return verifyOtp();
   else if (act==='backtophone') { state.screen='auth-phone'; state.otpCode=''; state.authError=''; }
@@ -571,11 +624,12 @@ document.getElementById('app').addEventListener('click', async (e) => {
   else if (act==='golessons') { state.screen='lessons'; state.activeTab='lessons'; }
   else if (act==='goscenarios') { state.screen='scenarios'; state.activeTab='scenarios'; }
   else if (act==='goprofile') { state.screen='profile'; state.activeTab='profile'; loadProgressStats().then(render); }
+  else if (act==='openreadiness2noop') { /* placeholder */ }
   else if (act==='gofluency') { state.screen='fluency'; state.fluencyStage='idle'; state.fluencyElapsed=0; }
   else if (act==='openlesson') { state.currentLessonId=id; state.screen='lesson'; state.highlightMode = state.track==='elder'?'letter':'word'; state._playing=false; state._playIdx=-1; render(); autoPlayCurrent(); return; }
   else if (act==='openmimicry') { if(id) state.currentLessonId=id; state.screen='mimicry'; state.mimicryStage='idle'; }
   else if (act==='openscenario') { state.activeScenarioId=id; state.screen='scenario-detail'; state._playing=false; state._playIdx=-1; render(); autoPlayCurrent(); return; }
-  else if (act==='back') { if(['lesson','fluency'].includes(state.screen)) state.screen='home'; else if(state.screen==='mimicry') state.screen='lesson'; else if(state.screen==='scenario-detail') state.screen='scenarios'; else state.screen=state.activeTab; state._playing=false; }
+  else if (act==='back') { if(['lesson','fluency','readiness'].includes(state.screen)) state.screen='home'; else if(state.screen==='mimicry') state.screen='lesson'; else if(state.screen==='scenario-detail') state.screen='scenarios'; else state.screen=state.activeTab; state._playing=false; stopSpeaking(); if(playTimer) clearInterval(playTimer); }
   else if (act==='fontup') { state.fontScaleIdx=Math.min(2,state.fontScaleIdx+1); saveProfile({font_scale:FONT_SCALES[state.fontScaleIdx]}); }
   else if (act==='fontdown') { state.fontScaleIdx=Math.max(0,state.fontScaleIdx-1); saveProfile({font_scale:FONT_SCALES[state.fontScaleIdx]}); }
   else if (act==='setfont') { state.fontScaleIdx=Number(btn.dataset.idx); saveProfile({font_scale:FONT_SCALES[state.fontScaleIdx]}); }
