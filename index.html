@@ -32,6 +32,7 @@
 </head>
 <body>
 <div id="app"><div class="shell" id="shell"></div></div>
+<div style="position:fixed;bottom:6px;left:50%;transform:translateX(-50%);font-size:10px;color:#8A968C;background:#FAF5EA;padding:2px 10px;border-radius:8px;z-index:999;">© 2026 أمي — جميع الحقوق محفوظة · v1.2.0</div>
 
 <script>
 const SUPABASE_URL = 'https://thdsfpjmzownaajfxmcv.supabase.co';
@@ -196,6 +197,21 @@ async function uploadRecording(blob, kind, lessonId) {
   } catch(e) {}
 }
 
+function speakText(text, onBoundaryToken, onEnd) {
+  if (!window.speechSynthesis) { if (onEnd) onEnd(); return; }
+  window.speechSynthesis.cancel();
+  const utter = new SpeechSynthesisUtterance(text);
+  utter.lang = 'ar-SA';
+  utter.rate = 0.85;
+  const voices = window.speechSynthesis.getVoices();
+  const arVoice = voices.find(v => v.lang && v.lang.startsWith('ar'));
+  if (arVoice) utter.voice = arVoice;
+  if (onEnd) utter.onend = onEnd;
+  utter.onerror = () => { if (onEnd) onEnd(); };
+  window.speechSynthesis.speak(utter);
+}
+function stopSpeaking() { if (window.speechSynthesis) window.speechSynthesis.cancel(); }
+
 function tokensFor(text, mode) {
   if (mode === 'letter') return Array.from(text).map(ch => ({ text: ch, isSpace: ch===' ' }));
   const words = text.split(' '); const out = [];
@@ -329,10 +345,11 @@ function screens() {
     content = `<div style="flex:1;display:flex;flex-direction:column;padding:22px 18px;gap:18px;">
       <div class="card" style="text-align:center;border-radius:20px;"><div style="font-size:22px;font-weight:700;line-height:2;">${currentLesson.text}</div></div>
       <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;">
+        ${s.mimicryStage==='idle' ? `<button data-act="playmodel" style="height:50px;border-radius:14px;border:1px solid #E4D9C2;background:#fff;display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;width:100%;">${icon('<path d="M8 5v14l11-7z" fill="#1F6B63"/>',18)}<span style="font-size:14px;font-weight:700;">استمع للنموذج</span></button>` : ''}
         ${s.mimicryStage==='idle' ? `<button data-act="startmimicry" style="width:96px;height:96px;border-radius:50%;border:none;background:${trackDef.accent};cursor:pointer;display:flex;align-items:center;justify-content:center;">${icon('<rect x="9" y="3" width="6" height="12" rx="3" fill="#fff"/><path d="M5 11a7 7 0 0014 0M12 18v3" stroke="#fff" stroke-width="1.8" fill="none" stroke-linecap="round"/>',34)}</button><div style="font-size:14px;color:#5E6C72;">اضغط وقلّد القراءة بصوتك</div>${s.micError?`<div style="font-size:13px;color:#C0392B;">${s.micError}</div>`:''}` : ''}
         ${s.mimicryStage==='recording' ? `<div style="width:96px;height:96px;border-radius:50%;background:${trackDef.accent};animation:pulseMic 1.6s infinite;display:flex;align-items:center;justify-content:center;">${icon('<rect x="9" y="3" width="6" height="12" rx="3" fill="#fff"/><path d="M5 11a7 7 0 0014 0M12 18v3" stroke="#fff" stroke-width="1.8" fill="none" stroke-linecap="round"/>',34)}</div><div style="font-size:14px;color:#5E6C72;">...جارٍ التسجيل</div>` : ''}
         ${s.mimicryStage==='recorded' ? `<div style="width:72px;height:72px;border-radius:50%;background:#3F8F5F;display:flex;align-items:center;justify-content:center;">${icon('<path d="M5 12l5 5L19 7" stroke="#fff" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>',30)}</div><div style="font-size:14px;font-weight:700;">أحسنت! استمع لتسجيلك</div>
-          <div style="display:flex;gap:10px;width:100%;"><button class="btn-outline" data-act="playmine" style="flex:1;">استمع لصوتي</button></div>
+          <div style="display:flex;gap:10px;width:100%;"><button class="btn-outline" data-act="playmine" style="flex:1;">استمع لصوتي</button><button class="btn-outline" data-act="playmodel" style="flex:1;">استمع للنموذج</button></div>
           <div style="display:flex;gap:10px;width:100%;"><button class="btn-outline" data-act="resetmimicry" style="flex:1;">أعد المحاولة</button><button class="btn-primary" data-act="finishmimicry" style="flex:1;background:${trackDef.accent};">أنهيت، التالي</button></div>` : ''}
       </div>
     </div>`;
@@ -383,6 +400,29 @@ function render() {
   if (otpInput) otpInput.oninput = e => { state.otpCode = e.target.value; state.authError=''; };
 }
 
+function startPlayback(text, mode) {
+  if (playTimer) clearInterval(playTimer);
+  stopSpeaking();
+  const toks = tokensFor(text, mode);
+  const speed = mode === 'letter' ? 150 : 480;
+  state._playing = true; state._playIdx = 0;
+  speakText(text, null, () => {});
+  playTimer = setInterval(() => {
+    state._playIdx++;
+    if (state._playIdx >= toks.length) { clearInterval(playTimer); state._playing=false; state._playIdx=-1; }
+    render();
+  }, speed);
+}
+function autoPlayCurrent() {
+  if (state.screen === 'lesson') {
+    const lesson = LESSONS.find(l=>l.id===state.currentLessonId);
+    if (lesson) startPlayback(lesson.text, state.highlightMode);
+  } else if (state.screen === 'scenario-detail') {
+    const sc = SCENARIOS.find(x=>x.id===state.activeScenarioId);
+    if (sc) startPlayback(sc.text, 'word');
+  }
+}
+
 document.getElementById('app').addEventListener('click', async (e) => {
   const btn = e.target.closest('[data-act]');
   if (!btn) return;
@@ -399,9 +439,9 @@ document.getElementById('app').addEventListener('click', async (e) => {
   else if (act==='goscenarios') { state.screen='scenarios'; state.activeTab='scenarios'; }
   else if (act==='goprofile') { state.screen='profile'; state.activeTab='profile'; }
   else if (act==='gofluency') { state.screen='fluency'; state.fluencyStage='idle'; state.fluencyElapsed=0; }
-  else if (act==='openlesson') { state.currentLessonId=id; state.screen='lesson'; state.highlightMode = state.track==='elder'?'letter':'word'; state._playing=false; state._playIdx=-1; }
+  else if (act==='openlesson') { state.currentLessonId=id; state.screen='lesson'; state.highlightMode = state.track==='elder'?'letter':'word'; state._playing=false; state._playIdx=-1; render(); autoPlayCurrent(); return; }
   else if (act==='openmimicry') { if(id) state.currentLessonId=id; state.screen='mimicry'; state.mimicryStage='idle'; }
-  else if (act==='openscenario') { state.activeScenarioId=id; state.screen='scenario-detail'; state._playing=false; state._playIdx=-1; }
+  else if (act==='openscenario') { state.activeScenarioId=id; state.screen='scenario-detail'; state._playing=false; state._playIdx=-1; render(); autoPlayCurrent(); return; }
   else if (act==='back') { if(['lesson','fluency'].includes(state.screen)) state.screen='home'; else if(state.screen==='mimicry') state.screen='lesson'; else if(state.screen==='scenario-detail') state.screen='scenarios'; else state.screen=state.activeTab; state._playing=false; }
   else if (act==='fontup') { state.fontScaleIdx=Math.min(2,state.fontScaleIdx+1); saveProfile({font_scale:FONT_SCALES[state.fontScaleIdx]}); }
   else if (act==='fontdown') { state.fontScaleIdx=Math.max(0,state.fontScaleIdx-1); saveProfile({font_scale:FONT_SCALES[state.fontScaleIdx]}); }
@@ -410,20 +450,14 @@ document.getElementById('app').addEventListener('click', async (e) => {
   else if (act==='modeword') state.highlightMode='word';
   else if (act==='resetplay') { state._playing=false; state._playIdx=-1; if(playTimer) clearInterval(playTimer); }
   else if (act==='toggleplay') {
-    if (state._playing) { if(playTimer) clearInterval(playTimer); state._playing=false; }
+    if (state._playing) { if(playTimer) clearInterval(playTimer); stopSpeaking(); state._playing=false; }
     else {
       const text = state.screen==='scenario-detail' ? SCENARIOS.find(x=>x.id===state.activeScenarioId).text : LESSONS.find(x=>x.id===state.currentLessonId).text;
       const mode = state.screen==='scenario-detail' ? 'word' : state.highlightMode;
-      const toks = tokensFor(text, mode);
-      const speed = mode==='letter' ? 150 : 480;
-      state._playing = true; state._playIdx = 0;
-      playTimer = setInterval(() => {
-        state._playIdx++;
-        if (state._playIdx >= toks.length) { clearInterval(playTimer); state._playing=false; state._playIdx=-1; }
-        render();
-      }, speed);
+      startPlayback(text, mode);
     }
   }
+  else if (act==='playmodel') { const text = LESSONS.find(x=>x.id===state.currentLessonId).text; speakText(text); return; }
   else if (act==='startmimicry') {
     state.mimicryStage='recording'; render();
     const ok = await startRecording();
