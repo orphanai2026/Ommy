@@ -4,35 +4,39 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>أمي — مدرّب القراءة العربية بالصوت</title>
-<meta name="app-version" content="v1.4.0">
+<meta name="app-version" content="v1.5.0">
 <meta name="copyright" content="© 2026 مشروع أمي. جميع الحقوق محفوظة.">
-<!-- التحديثات v1.4.0: مستويات صعوبة تصاعدية، قفل الدروس تدريجيًا، تحقق جاهزية بين المستويات -->
+<!-- التحديثات v1.5.0: هوية بصرية محسّنة (شعار مطوّر، ظلال عمق)، شاشات دخول/OTP معاد التصميم بمؤشر خطوات، ظلال أزرار وبطاقات -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   * { box-sizing: border-box; }
   body { margin: 0; background: #EDE7D8; font-family: 'Cairo', system-ui, sans-serif; color:#1A2529; }
-  button { font-family: inherit; }
+  button { font-family: inherit; transition: transform .06s ease; }
+  button:active { transform: scale(0.97); }
   a { color: #1F6B63; }
   a:hover { color: #144A44; }
   @keyframes pulseMic { 0%{box-shadow:0 0 0 0 rgba(180,128,46,.35)} 70%{box-shadow:0 0 0 22px rgba(180,128,46,0)} 100%{box-shadow:0 0 0 0 rgba(180,128,46,0)} }
   @keyframes waveBar { 0%,100%{transform:scaleY(.3)} 50%{transform:scaleY(1)} }
   #app { min-height: 100vh; display: flex; justify-content: center; }
   .shell { width: 100%; max-width: 520px; min-height: 100vh; display: flex; flex-direction: column; background: #FAF5EA; box-shadow: 0 0 40px rgba(0,0,0,.06); }
-  .topbar { display:flex; align-items:center; gap:10px; padding:10px 16px; border-bottom:1px solid #E4D9C2; flex-shrink:0; }
+  .topbar { display:flex; align-items:center; gap:10px; padding:10px 16px; border-bottom:1px solid #E4D9C2; flex-shrink:0; background:#FAF5EA; }
   .content { flex:1; overflow-y:auto; display:flex; flex-direction:column; }
-  .btn-primary { height:60px; border-radius:14px; border:none; background:#1F6B63; color:#fff; font-size:17px; font-weight:700; cursor:pointer; }
-  .btn-outline { height:56px; border-radius:14px; border:2px solid #C7BA9C; background:#fff; color:#1A2529; font-size:15px; font-weight:700; cursor:pointer; }
-  .card { background:#fff; border:2px solid #C7BA9C; border-radius:18px; padding:18px; }
+  .btn-primary { height:60px; border-radius:14px; border:none; background:#1F6B63; color:#fff; font-size:17px; font-weight:700; cursor:pointer; box-shadow:0 6px 16px rgba(31,107,99,.28); }
+  .btn-outline { height:56px; border-radius:14px; border:2px solid #C7BA9C; background:#fff; color:#1A2529; font-size:15px; font-weight:700; cursor:pointer; box-shadow:0 2px 6px rgba(26,37,41,.05); }
+  .card { background:#fff; border:2px solid #C7BA9C; border-radius:18px; padding:18px; box-shadow:0 3px 12px rgba(26,37,41,.05); }
   .bottomnav { display:flex; border-top:2px solid #C7BA9C; background:#fff; flex-shrink:0; }
   .navitem { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; padding:12px 4px 14px; border:none; background:transparent; cursor:pointer; min-height:56px; }
   input[type=email], input[type=text] { height:60px; border-radius:14px; border:2px solid #C7BA9C; background:#fff; font-size:19px; text-align:center; color:#1A2529; font-family:'Cairo',sans-serif; width:100%; }
+  input[type=email]:focus, input[type=text]:focus { outline:none; border-color:#1F6B63; box-shadow:0 0 0 4px rgba(31,107,99,.12); }
+  .brand-mark { background: radial-gradient(circle at 30% 25%, #24806F, #17564D); box-shadow: 0 10px 24px rgba(23,86,77,.35); }
+  .step-dot { height:6px; border-radius:4px; transition: all .2s ease; }
 </style>
 </head>
 <body>
 <div id="app"><div class="shell" id="shell"></div></div>
-<div style="position:fixed;bottom:6px;left:50%;transform:translateX(-50%);font-size:10px;color:#8A968C;background:#FAF5EA;padding:2px 10px;border-radius:8px;z-index:999;">© 2026 أمي — جميع الحقوق محفوظة · v1.4.0</div>
+<div style="position:fixed;bottom:6px;left:50%;transform:translateX(-50%);font-size:10px;color:#8A968C;background:#FAF5EA;padding:2px 10px;border-radius:8px;z-index:999;">© 2026 أمي — جميع الحقوق محفوظة · v1.5.0</div>
 
 <script>
 const SUPABASE_URL = 'https://thdsfpjmzownaajfxmcv.supabase.co';
@@ -372,7 +376,7 @@ function screens() {
   if (showTopBar) {
     topbar = `<div class="topbar">
       ${showBack ? `<button data-act="back" style="width:44px;height:44px;border-radius:12px;border:none;background:#F1EAD9;display:flex;align-items:center;justify-content:center;cursor:pointer;">${icon('<path d="M7 4l7 6-7 6" stroke="#26333B" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>')}</button>`
-      : `<div style="width:36px;height:36px;border-radius:10px;background:#1F6B63;display:flex;align-items:center;justify-content:center;">${icon('<path d="M4 19V5a1 1 0 011-1h11l4 4v11a1 1 0 01-1 1H5a1 1 0 01-1-1z" fill="none" stroke="#fff" stroke-width="1.6"/><path d="M8 9h8M8 13h5" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/>')}</div>`}
+      : `<div class="brand-mark" style="width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;">${icon('<path d="M4 19V5a1 1 0 011-1h11l4 4v11a1 1 0 01-1 1H5a1 1 0 01-1-1z" fill="none" stroke="#fff" stroke-width="1.6"/><path d="M8 9h8M8 13h5" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/>')}</div>`}
       <div style="flex:1;min-width:0;font-size:17px;font-weight:700;color:#26333B;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${topTitles[s.screen]||'أمي'}</div>
       <div style="display:flex;gap:4px;background:#F1EAD9;border-radius:12px;padding:3px;">
         <button data-act="fontdown" style="width:34px;height:34px;border-radius:9px;border:none;background:transparent;font-size:13px;font-weight:700;cursor:pointer;">أ-</button>
@@ -383,23 +387,27 @@ function screens() {
 
   let content = '';
   if (s.screen === 'splash') {
-    content = `<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px;gap:22px;text-align:center;">
-      <div style="width:88px;height:88px;border-radius:24px;background:#1F6B63;display:flex;align-items:center;justify-content:center;">${icon('<path d="M4 19V5a1 1 0 011-1h11l4 4v11a1 1 0 01-1 1H5a1 1 0 01-1-1z" fill="none" stroke="#fff" stroke-width="1.4"/><path d="M8 9h8M8 13h6M8 17h4" stroke="#fff" stroke-width="1.4" stroke-linecap="round"/>',46)}</div>
-      <div><div style="font-size:30px;font-weight:800;color:#26333B;">أمي</div><div style="font-size:16px;color:#3F4B50;margin-top:10px;line-height:1.7;max-width:280px;">مدرّبك الصوتي لتعلّم القراءة العربية، خطوة بخطوة وبثقة</div></div>
-      <button class="btn-primary" data-act="goauth" style="width:100%;max-width:280px;font-size:18px;">ابدأ الآن</button>
-      <div style="font-size:13px;color:#8A968C;">دقيقتان فقط لتحديد أفضل بداية لك</div>
+    content = `<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px;gap:24px;text-align:center;position:relative;overflow:hidden;">
+      <div style="position:absolute;top:-60px;right:-60px;width:220px;height:220px;border-radius:50%;background:#F2E6CC;opacity:0.5;"></div>
+      <div style="position:absolute;bottom:-80px;left:-80px;width:260px;height:260px;border-radius:50%;background:#DCEFE1;opacity:0.5;"></div>
+      <div class="brand-mark" style="width:96px;height:96px;border-radius:26px;display:flex;align-items:center;justify-content:center;position:relative;z-index:1;">${icon('<path d="M4 19V5a1 1 0 011-1h11l4 4v11a1 1 0 01-1 1H5a1 1 0 01-1-1z" fill="none" stroke="#fff" stroke-width="1.4"/><path d="M8 9h6M8 13h4" stroke="#fff" stroke-width="1.4" stroke-linecap="round"/><path d="M18.5 9.5a2 2 0 010 3M20 8a4.5 4.5 0 010 6" stroke="#fff" stroke-width="1.3" stroke-linecap="round" fill="none"/>',48)}</div>
+      <div style="position:relative;z-index:1;"><div style="font-size:32px;font-weight:800;color:#17564D;letter-spacing:0.5px;">أمي</div><div style="font-size:16px;color:#3F4B50;margin-top:12px;line-height:1.7;max-width:280px;">مدرّبك الصوتي لتعلّم القراءة العربية، خطوة بخطوة وبثقة</div></div>
+      <button class="btn-primary" data-act="goauth" style="width:100%;max-width:280px;font-size:18px;position:relative;z-index:1;">ابدأ الآن</button>
+      <div style="font-size:13px;color:#8A968C;position:relative;z-index:1;">دقيقتان فقط لتحديد أفضل بداية لك</div>
     </div>`;
   } else if (s.screen === 'auth-phone') {
-    content = `<div style="flex:1;display:flex;flex-direction:column;padding:28px 22px;gap:20px;justify-content:center;">
-      <div style="text-align:center;"><div style="font-size:20px;font-weight:800;color:#26333B;">أدخل بريدك الإلكتروني</div><div style="font-size:14px;color:#5E6C72;margin-top:8px;">لحفظ تقدّمك والوصول إليه من أي جهاز</div></div>
+    content = `<div style="flex:1;display:flex;flex-direction:column;padding:32px 22px;gap:22px;justify-content:center;">
+      <div style="display:flex;gap:6px;justify-content:center;"><div class="step-dot" style="width:28px;background:#1F6B63;"></div><div class="step-dot" style="width:14px;background:#E4D9C2;"></div></div>
+      <div style="text-align:center;"><div class="brand-mark" style="width:56px;height:56px;border-radius:16px;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">${icon('<path d="M4 6h16v12H4z" fill="none" stroke="#fff" stroke-width="1.6"/><path d="M4 7l8 6 8-6" stroke="#fff" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>',26)}</div><div style="font-size:21px;font-weight:800;color:#17564D;">أدخل بريدك الإلكتروني</div><div style="font-size:14px;color:#5E6C72;margin-top:8px;">لحفظ تقدّمك والوصول إليه من أي جهاز</div></div>
       <input type="email" id="emailInput" placeholder="name@example.com" value="${s.email}">
       ${s.authError ? `<div style="font-size:13px;color:#C0392B;text-align:center;">${s.authError}</div>` : ''}
       <button class="btn-primary" data-act="sendotp" ${s.authLoading?'disabled':''} style="opacity:${s.authLoading?.6:1}">${s.authLoading?'جارٍ الإرسال...':'إرسال الرمز'}</button>
     </div>`;
   } else if (s.screen === 'auth-otp') {
-    content = `<div style="flex:1;display:flex;flex-direction:column;padding:28px 22px;gap:20px;justify-content:center;">
-      <div style="text-align:center;"><div style="font-size:20px;font-weight:800;color:#26333B;">أدخل رمز التحقق</div><div style="font-size:14px;color:#5E6C72;margin-top:8px;">أرسلنا رمزًا مكوّنًا من 6 أرقام إلى ${s.email}</div></div>
-      <input type="text" id="otpInput" placeholder="000000" value="${s.otpCode}" style="font-size:24px;letter-spacing:6px;">
+    content = `<div style="flex:1;display:flex;flex-direction:column;padding:32px 22px;gap:22px;justify-content:center;">
+      <div style="display:flex;gap:6px;justify-content:center;"><div class="step-dot" style="width:14px;background:#1F6B63;"></div><div class="step-dot" style="width:28px;background:#1F6B63;"></div></div>
+      <div style="text-align:center;"><div class="brand-mark" style="width:56px;height:56px;border-radius:16px;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">${icon('<rect x="5" y="10" width="14" height="10" rx="2" fill="none" stroke="#fff" stroke-width="1.6"/><path d="M8 10V7a4 4 0 018 0v3" stroke="#fff" stroke-width="1.6" fill="none" stroke-linecap="round"/>',26)}</div><div style="font-size:21px;font-weight:800;color:#17564D;">أدخل رمز التحقق</div><div style="font-size:14px;color:#5E6C72;margin-top:8px;">أرسلنا رمزًا مكوّنًا من 6 أرقام إلى ${s.email}</div></div>
+      <input type="text" id="otpInput" placeholder="000000" value="${s.otpCode}" style="font-size:26px;letter-spacing:8px;">
       ${s.authError ? `<div style="font-size:13px;color:#C0392B;text-align:center;">${s.authError}</div>` : ''}
       <button class="btn-primary" data-act="verifyotp" ${s.authLoading?'disabled':''} style="opacity:${s.authLoading?.6:1}">${s.authLoading?'جارٍ التحقق...':'تأكيد'}</button>
       <button data-act="backtophone" style="height:44px;border:none;background:transparent;color:#5E6C72;font-size:14px;font-weight:600;cursor:pointer;">تغيير البريد الإلكتروني</button>
