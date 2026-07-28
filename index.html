@@ -4,9 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>أمي — مدرّب القراءة العربية بالصوت</title>
-<meta name="app-version" content="v1.5.0">
+<meta name="app-version" content="v1.6.0">
 <meta name="copyright" content="© 2026 مشروع أمي. جميع الحقوق محفوظة.">
-<!-- التحديثات v1.5.0: هوية بصرية محسّنة (شعار مطوّر، ظلال عمق)، شاشات دخول/OTP معاد التصميم بمؤشر خطوات، ظلال أزرار وبطاقات -->
+<!-- التحديثات v1.6.0: وضع بلا إنترنت (Service Worker)، إعادة تشغيل كلمة واحدة بالضغط، رابط متابعة تقدّم للأهل، تذكير يومي -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -36,7 +36,7 @@
 </head>
 <body>
 <div id="app"><div class="shell" id="shell"></div></div>
-<div style="position:fixed;bottom:6px;left:50%;transform:translateX(-50%);font-size:10px;color:#8A968C;background:#FAF5EA;padding:2px 10px;border-radius:8px;z-index:999;">© 2026 أمي — جميع الحقوق محفوظة · v1.5.0</div>
+<div style="position:fixed;bottom:6px;left:50%;transform:translateX(-50%);font-size:10px;color:#8A968C;background:#FAF5EA;padding:2px 10px;border-radius:8px;z-index:999;">© 2026 أمي — جميع الحقوق محفوظة · v1.6.0</div>
 
 <script>
 const SUPABASE_URL = 'https://thdsfpjmzownaajfxmcv.supabase.co';
@@ -108,6 +108,7 @@ const state = {
   activeScenarioId: 1, myRecordingUrl: null, micError: '', userId: null,
   streak: 0, completedCount: 0, totalLessons: 0, recordingsCount: 0, recentRecordings: [],
   avgWpm: null, recordStartTs: null, readinessLevel: 0, completedLessonIds: new Set(), readinessTargetLevel: null,
+  shareCode: null, notifEnabled: false, publicShare: null,
 };
 let mediaRecorder = null, audioChunks = [], mediaStream = null, fluencyTimer = null, playTimer = null;
 
@@ -116,8 +117,41 @@ function icon(svg, size=20) { return `<svg width="${size}" height="${size}" view
 
 async function init() {
   await loadContent();
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./sw.js').catch(()=>{});
+  }
+  const params = new URLSearchParams(location.search);
+  const shareParam = params.get('share');
+  if (shareParam) {
+    try {
+      const { data, error } = await sb.rpc('get_public_progress', { p_share_code: shareParam });
+      state.publicShare = (!error && data && data.length) ? data[0] : { error: true };
+    } catch(e) { state.publicShare = { error: true }; }
+    state.screen = 'public-share';
+    render();
+    return;
+  }
   const { data: { session } } = await sb.auth.getSession();
-  if (session) { await loadProfile(session.user.id); await loadStreak(); await loadProgressStats(); }
+  if (session) {
+    await loadProfile(session.user.id); await loadStreak(); await loadProgressStats();
+    maybeShowDailyReminder();
+  }
+  render();
+}
+
+function maybeShowDailyReminder() {
+  if (!('Notification' in window) || Notification.permission !== 'granted') return;
+  const today = new Date().toISOString().slice(0,10);
+  const lastShown = localStorage.getItem('amie_reminder_shown');
+  if (lastShown === today) return;
+  if (state.streak === 0) return;
+  new Notification('أمي — وقت درسك اليومي', { body: 'حافظ على سلسلتك، درس واحد يكفي اليوم 🌿' });
+  localStorage.setItem('amie_reminder_shown', today);
+}
+async function enableReminders() {
+  if (!('Notification' in window)) return;
+  const perm = await Notification.requestPermission();
+  if (perm === 'granted') { state.notifEnabled = true; await saveProfile({ notif_enabled: true }); new Notification('أمي', { body: 'تم تفعيل التذكير اليومي بنجاح' }); }
   render();
 }
 
@@ -178,6 +212,8 @@ async function loadProfile(userId) {
     state.fontScaleIdx = idx >= 0 ? idx : 1;
     state.avgWpm = profile.avg_wpm || null;
     state.readinessLevel = profile.readiness_level || 0;
+    state.shareCode = profile.share_code || null;
+    state.notifEnabled = !!profile.notif_enabled;
     state.screen = profile.track ? 'home' : 'test';
     state.activeTab = 'home';
   }
@@ -358,6 +394,23 @@ function playWithAlignmentAudio(item, mode, onDone) {
   audio.onerror = () => { state._playing=false; state._playIdx=-1; render(); };
   audio.play();
 }
+function playSingleWord(item, mode, tokenIdx) {
+  if (!item.alignment || !item.audioUrl) { speakTextEL(tokensFor(item.text, mode)[tokenIdx].text); return; }
+  const tokens = tokensFor(item.text, mode);
+  const times = item.alignment.character_start_times_seconds || [];
+  const endTimes = item.alignment.character_end_times_seconds || times;
+  const tk = tokens[tokenIdx];
+  const nextTk = tokens[tokenIdx+1];
+  const startT = times[tk.startChar];
+  const endT = nextTk ? times[nextTk.startChar] : endTimes[endTimes.length-1];
+  if (startT === undefined) return;
+  if (_currentAudio) _currentAudio.pause();
+  const audio = new Audio(item.audioUrl);
+  audio.currentTime = startT;
+  audio.play();
+  const stopAt = () => { if (audio.currentTime >= endT) { audio.pause(); audio.removeEventListener('timeupdate', stopAt); } };
+  audio.addEventListener('timeupdate', stopAt);
+}
 
 function screens() {
   const s = state;
@@ -368,7 +421,7 @@ function screens() {
   const fs = FONT_SCALES[s.fontScaleIdx];
 
   const topTitles = { home:'أمي', lessons:'الدروس', scenarios:'مواقف من الحياة', profile:'حسابي', lesson: currentLesson.title, mimicry:'قلّد القراءة', fluency:'القراءة المستقلة', 'scenario-detail': currentScenario.title, readiness: 'تحقق الجاهزية' };
-  const showTopBar = !['splash','test','track-suggest','auth-phone','auth-otp'].includes(s.screen);
+  const showTopBar = !['splash','test','track-suggest','auth-phone','auth-otp','public-share'].includes(s.screen);
   const showBack = ['lesson','mimicry','fluency','scenario-detail','readiness'].includes(s.screen);
   const showBottomNav = ['home','lessons','scenarios','profile'].includes(s.screen);
 
@@ -386,7 +439,24 @@ function screens() {
   }
 
   let content = '';
-  if (s.screen === 'splash') {
+  if (s.screen === 'public-share') {
+    const share = s.publicShare;
+    if (!share || share.error) {
+      content = `<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px;gap:14px;text-align:center;"><div style="font-size:16px;font-weight:700;">رابط غير صالح أو منتهي الصلاحية</div></div>`;
+    } else {
+      const pct = share.total_lessons > 0 ? Math.round((share.completed_count/share.total_lessons)*100) : 0;
+      content = `<div style="flex:1;display:flex;flex-direction:column;padding:32px 22px;gap:20px;">
+        <div style="text-align:center;"><div class="brand-mark" style="width:64px;height:64px;border-radius:18px;display:flex;align-items:center;justify-content:center;margin:0 auto 12px;">${icon('<path d="M4 19V5a1 1 0 011-1h11l4 4v11a1 1 0 01-1 1H5a1 1 0 01-1-1z" fill="none" stroke="#fff" stroke-width="1.4"/>',30)}</div><div style="font-size:19px;font-weight:800;">تقدّم المتعلّم</div></div>
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;margin-bottom:10px;"><span style="font-size:13px;color:#3F4B50;">الدروس المكتملة</span><span style="font-weight:800;">${toArabicNum(share.completed_count)} من ${toArabicNum(share.total_lessons)}</span></div>
+          <div style="height:10px;border-radius:6px;background:#F1EAD9;overflow:hidden;margin-bottom:14px;"><div style="height:100%;width:${pct}%;background:#1F6B63;border-radius:6px;"></div></div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:10px;"><span style="font-size:13px;color:#3F4B50;">نشاط آخر 30 يومًا</span><span style="font-weight:800;">${toArabicNum(share.streak_days)} يوم</span></div>
+          ${share.avg_wpm ? `<div style="display:flex;justify-content:space-between;"><span style="font-size:13px;color:#3F4B50;">سرعة القراءة</span><span style="font-weight:800;">${toArabicNum(share.avg_wpm)} كلمة/دقيقة</span></div>` : ''}
+        </div>
+        <div style="text-align:center;font-size:12px;color:#8A968C;">عرض للقراءة فقط — تطبيق أمي</div>
+      </div>`;
+    }
+  } else if (s.screen === 'splash') {
     content = `<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px;gap:24px;text-align:center;position:relative;overflow:hidden;">
       <div style="position:absolute;top:-60px;right:-60px;width:220px;height:220px;border-radius:50%;background:#F2E6CC;opacity:0.5;"></div>
       <div style="position:absolute;bottom:-80px;left:-80px;width:260px;height:260px;border-radius:50%;background:#DCEFE1;opacity:0.5;"></div>
@@ -504,6 +574,16 @@ function screens() {
         <button data-act="setnonnative" style="height:54px;border-radius:12px;border:2px solid ${track==='nonnative'?TRACKS.nonnative.accent:'#C7BA9C'};background:${track==='nonnative'?TRACKS.nonnative.accentSoft:'#fff'};font-size:15px;font-weight:700;cursor:pointer;color:#1A2529;">تعلّم من الصفر</button>
       </div></div>
       <button data-act="logout" style="height:54px;border-radius:12px;border:2px solid #C7BA9C;background:#fff;color:#C0392B;font-size:15px;font-weight:700;cursor:pointer;">تسجيل الخروج</button>
+      <div class="card">
+        <div style="font-size:14px;font-weight:700;margin-bottom:4px;">متابعة من الأهل</div>
+        <div style="font-size:12px;color:#5E6C72;margin-bottom:12px;line-height:1.6;">شارك رابطًا للقراءة فقط يعرض تقدّمك لمن تحب.</div>
+        <button data-act="copyshare" style="height:48px;border-radius:12px;border:2px solid #C7BA9C;background:#F1EAD9;color:#1A2529;font-size:14px;font-weight:700;cursor:pointer;width:100%;">${s.shareCopied ? 'تم النسخ ✓' : 'نسخ رابط المتابعة'}</button>
+      </div>
+      <div class="card">
+        <div style="font-size:14px;font-weight:700;margin-bottom:4px;">التذكير اليومي</div>
+        <div style="font-size:12px;color:#5E6C72;margin-bottom:12px;line-height:1.6;">نذكّرك بدرسك عند فتح التطبيق.</div>
+        <button data-act="enablenotif" style="height:48px;border-radius:12px;border:2px solid #C7BA9C;background:${s.notifEnabled?'#DCEFE1':'#F1EAD9'};color:#1A2529;font-size:14px;font-weight:700;cursor:pointer;width:100%;">${s.notifEnabled ? 'مُفعَّل ✓' : 'تفعيل التذكير'}</button>
+      </div>
       <div style="text-align:center;font-size:11px;color:#8A968C;">© 2026 أمي. جميع الحقوق محفوظة.</div>
     </div>`;
   } else if (s.screen === 'lesson') {
@@ -517,9 +597,10 @@ function screens() {
       </div>
       <div class="card" style="flex:1;display:flex;align-items:center;justify-content:center;min-height:160px;border-radius:20px;">
         <div style="font-size:${28*fs}px;font-weight:700;line-height:2.3;text-align:center;">
-          ${tokens.map((tk,i)=>`<span style="border-radius:6px;padding:${mode==='letter'?'1px 2px':'2px 6px'};${i===tokenIdx&&!tk.isSpace?`background:${trackDef.accentSoft};color:${trackDef.accent};`:''}">${tk.text}</span>`).join('')}
+          ${tokens.map((tk,i)=>`<span data-act="${!tk.isSpace ? 'playword' : ''}" data-id="${i}" style="border-radius:6px;padding:${mode==='letter'?'1px 2px':'2px 6px'};${!tk.isSpace?'cursor:pointer;':''}${i===tokenIdx&&!tk.isSpace?`background:${trackDef.accentSoft};color:${trackDef.accent};`:''}">${tk.text}</span>`).join('')}
         </div>
       </div>
+      <div style="text-align:center;font-size:12px;color:#8A968C;">اضغط أي كلمة لسماعها بمفردها</div>
       <div style="display:flex;align-items:center;justify-content:center;gap:18px;">
         <button data-act="resetplay" style="width:52px;height:52px;border-radius:50%;border:1px solid #E4D9C2;background:#fff;cursor:pointer;">${icon('<path d="M12 5V2L7 6l5 4V7a5 5 0 11-5 5H5a7 7 0 107-7z" fill="#26333B"/>')}</button>
         <button data-act="toggleplay" style="width:72px;height:72px;border-radius:50%;border:none;background:#1F6B63;cursor:pointer;display:flex;align-items:center;justify-content:center;">${s._playing?icon('<rect x="6" y="5" width="4" height="14" rx="1" fill="#fff"/><rect x="14" y="5" width="4" height="14" rx="1" fill="#fff"/>',26):icon('<path d="M8 5v14l11-7z" fill="#fff"/>',26)}</button>
@@ -679,6 +760,11 @@ document.getElementById('app').addEventListener('click', async (e) => {
     }
   }
   else if (act==='playmodel') { const lesson = LESSONS.find(x=>x.id===state.currentLessonId); if (lesson.audioUrl) new Audio(lesson.audioUrl).play(); else speakTextEL(lesson.text); return; }
+  else if (act==='playword') {
+    const lesson = LESSONS.find(x=>x.id===state.currentLessonId);
+    playSingleWord(lesson, state.highlightMode, id);
+    return;
+  }
   else if (act==='startmimicry') {
     state.mimicryStage='recording'; render();
     const ok = await startRecording();
@@ -704,6 +790,11 @@ document.getElementById('app').addEventListener('click', async (e) => {
     await loadProgressStats();
   }
   else if (act==='logout') { await sb.auth.signOut(); state.userId=null; state.track=null; state.screen='splash'; }
+  else if (act==='copyshare') {
+    const link = `${location.origin}${location.pathname}?share=${state.shareCode}`;
+    try { await navigator.clipboard.writeText(link); state.shareCopied = true; setTimeout(() => { state.shareCopied = false; render(); }, 2000); } catch(e) {}
+  }
+  else if (act==='enablenotif') { await enableReminders(); }
   render();
 });
 
