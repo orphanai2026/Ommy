@@ -4,9 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>أمي — مدرّب القراءة العربية بالصوت</title>
-<meta name="app-version" content="v2.4.0">
+<meta name="app-version" content="v3.0.0">
 <meta name="copyright" content="© 2026 مشروع أمي. جميع الحقوق محفوظة.">
-<!-- التحديثات v2.4.0: تصحيح أشكال الحروف علميًا (رموز يونيكود الأشكال الرسمية بدل الشرطات التقريبية)، إتقان كل حرف يتطلب إجابتين صحيحتين متتاليتين، تمرين ثانٍ متنوع (كلمة تبدأ بالحرف) إلى جانب تمرين الصوت، تكرار نطق الحرف تلقائيًا مرتين -->
+<!-- التحديثات v3.0.0: مرحلة جسر جديدة "الحركات والمقاطع" بين الحروف والجمل (دليل حركات + ١٢ مقطعًا)، تأكيد ذاتي قبل احتساب طلاقة القراءة، بانر تذكير لطيف بعد ٥ دروس يوميًا -->
 <link rel="manifest" href="./manifest.json">
 <meta name="theme-color" content="#1F6B63">
 <link rel="apple-touch-icon" href="./icon-192.png">
@@ -39,7 +39,7 @@
 </head>
 <body>
 <div id="app"><div class="shell" id="shell"></div></div>
-<div style="position:fixed;bottom:6px;left:50%;transform:translateX(-50%);font-size:10px;color:#8A968C;background:#FAF5EA;padding:2px 10px;border-radius:8px;z-index:999;">© 2026 أمي — جميع الحقوق محفوظة · v2.4.0</div>
+<div style="position:fixed;bottom:6px;left:50%;transform:translateX(-50%);font-size:10px;color:#8A968C;background:#FAF5EA;padding:2px 10px;border-radius:8px;z-index:999;">© 2026 أمي — جميع الحقوق محفوظة · v3.0.0</div>
 <div id="installBanner" style="display:none;position:fixed;bottom:34px;left:50%;transform:translateX(-50%);width:calc(100% - 32px);max-width:480px;background:#fff;border:2px solid #C7BA9C;border-radius:16px;padding:12px 14px;box-shadow:0 8px 24px rgba(26,37,41,.15);z-index:1000;display:flex;align-items:center;gap:10px;">
   <div style="flex:1;font-size:13px;font-weight:600;color:#26333B;" id="installBannerText">ثبّت أمي على شاشتك الرئيسية لفتحه بلمسة واحدة</div>
   <button id="installBannerBtn" style="height:38px;padding:0 16px;border-radius:10px;border:none;background:#1F6B63;color:#fff;font-size:13px;font-weight:700;cursor:pointer;flex-shrink:0;">تثبيت</button>
@@ -120,6 +120,29 @@ const LEVEL0_RAW = [
 ];
 function unesc(s) { return s.replace(/\\u[0-9A-Fa-f]{4}/g, m => String.fromCharCode(parseInt(m.slice(2),16))); }
 const LEVEL0_LETTERS = LEVEL0_RAW.map(([c,name,iso,init,med,fin,word]) => ({c, name, iso: unesc(iso), init: unesc(init), med: unesc(med), fin: unesc(fin), word}));
+const HARAKAT_GUIDE = [
+  {name:'الفتحة', syl:'بَ', desc:'حركة قصيرة فوق الحرف، صوت "أ" خفيف'},
+  {name:'الكسرة', syl:'بِ', desc:'حركة قصيرة تحت الحرف، صوت "إ" خفيف'},
+  {name:'الضمة', syl:'بُ', desc:'حركة قصيرة فوق الحرف، صوت "أُ" خفيف'},
+  {name:'السكون', syl:'بْ', desc:'الحرف ساكن بلا حركة'},
+  {name:'الشدة', syl:'بَّ', desc:'تضعيف الحرف، يُنطق مرتين'},
+  {name:'التنوين', syl:'بً', desc:'نون ساكنة في آخر الكلمة'},
+];
+const SYLLABLES_RAW = [
+  ['بَا','باب'],
+  ['بِي','بيت'],
+  ['بُو','بوابة'],
+  ['تَا','تاج'],
+  ['دَرَ','درس'],
+  ['سَمَ','سمك'],
+  ['كَتَ','كتاب'],
+  ['مَا','ماء'],
+  ['نُو','نور'],
+  ['لِي','ليل'],
+  ['رَا','راحة'],
+  ['هَلْ','هل'],
+];
+const SYLLABLES = SYLLABLES_RAW.map(([syl,word])=>({syl,word}));
 function toArabicNum(n) { return String(n).split('').map(d => ARABIC_NUMS[+d] ?? d).join(''); }
 let LESSONS = FALLBACK_LESSONS.slice();
 let SCENARIOS = FALLBACK_SCENARIOS.slice();
@@ -150,7 +173,8 @@ const state = {
   avgWpm: null, recordStartTs: null, readinessLevel: 0, completedLessonIds: new Set(), readinessTargetLevel: null,
   shareCode: null, notifEnabled: false, publicShare: null,
   needsLevel0: false, level0Index: 0, level0ViewIndex: 0, level0QuizLetters: [], level0QuizWords: [], level0QuizCorrect: '', level0QuizFeedback: '', level0WeakLetters: [], level0ReviewMode: false, level0ExerciseType: 'sound', level0MasteryCount: 0,
-  reviewLessonId: null, assessStep: 1,
+  needsSyllables: false, syllablesIndex: 0, syllablesViewIndex: 0, syllablesWeak: [], syllablesReviewMode: false, syllablesExerciseType: 'sound', syllablesMasteryCount: 0, syllablesQuizOptions: [], syllablesQuizCorrect: '', syllablesQuizFeedback: '',
+  reviewLessonId: null, assessStep: 1, todayLessonsCount: 0, fluencyConfirmed: false,
 };
 let deferredInstallPrompt = null;
 let mediaRecorder = null, audioChunks = [], mediaStream = null, fluencyTimer = null, playTimer = null;
@@ -249,6 +273,9 @@ async function loadProgressStats() {
     state.recordingsCount = recordingsCount || 0;
     const { data: attemptRows } = await sb.from('lesson_progress').select('lesson_id, attempts, status').eq('user_id', state.userId).eq('status', 'completed').gt('attempts', 1).order('attempts', { ascending: false }).limit(1);
     state.reviewLessonId = (attemptRows && attemptRows.length) ? attemptRows[0].lesson_id : null;
+    const today = new Date().toISOString().slice(0,10);
+    const { data: todayRow } = await sb.from('daily_activity').select('lessons_practiced').eq('user_id', state.userId).eq('activity_date', today).maybeSingle();
+    state.todayLessonsCount = todayRow?.lessons_practiced || 0;
     const { data: recent } = await sb.from('recordings').select('kind, created_at').eq('user_id', state.userId).order('created_at', { ascending: false }).limit(5);
     state.recentRecordings = recent || [];
   } catch(e) {}
@@ -301,7 +328,10 @@ async function loadProfile(userId) {
     state.needsLevel0 = !!profile.needs_level0;
     state.level0Index = profile.level0_index || 0;
     state.level0WeakLetters = profile.level0_weak_letters || [];
-    if (profile.track) { state.screen = state.needsLevel0 ? 'level0-map' : 'home'; }
+    state.needsSyllables = !!profile.needs_syllables;
+    state.syllablesIndex = profile.syllables_index || 0;
+    state.syllablesWeak = profile.syllables_weak || [];
+    if (profile.track) { state.screen = state.needsLevel0 ? 'level0-map' : (state.needsSyllables ? 'syllables-map' : 'home'); }
     else if (!profile.placement_done) { state.screen = 'placement'; }
     else { state.screen = 'track-quick'; }
     state.activeTab = 'home';
@@ -566,6 +596,53 @@ function level0HandleAnswer(isCorrect) {
     }
   }
 }
+function syllablesPrepareQuiz(idx, review) {
+  const correct = SYLLABLES[idx];
+  state.syllablesViewIndex = idx;
+  state.syllablesExerciseType = Math.random() < 0.5 ? 'sound' : 'word';
+  if (state.syllablesExerciseType === 'sound') {
+    const pool = SYLLABLES.filter((_,i)=>i!==idx).map(x=>x.syl);
+    state.syllablesQuizOptions = [correct.syl, ...pool.sort(()=>Math.random()-0.5).slice(0,2)].sort(()=>Math.random()-0.5);
+    state.syllablesQuizCorrect = correct.syl;
+  } else {
+    const pool = SYLLABLES.filter((_,i)=>i!==idx).map(x=>x.word);
+    state.syllablesQuizOptions = [correct.word, ...pool.sort(()=>Math.random()-0.5).slice(0,2)].sort(()=>Math.random()-0.5);
+    state.syllablesQuizCorrect = correct.word;
+  }
+  state.syllablesQuizFeedback = '';
+  state.syllablesReviewMode = !!review;
+  state.screen = 'syllables-quiz';
+  render();
+  const textToSpeak = state.syllablesExerciseType === 'sound' ? correct.syl : correct.word;
+  speakTextEL(textToSpeak, () => { setTimeout(() => speakTextEL(textToSpeak), 500); });
+}
+function syllablesHandleAnswer(isCorrect) {
+  const idx = state.syllablesViewIndex;
+  const syl = SYLLABLES[idx].syl;
+  if (isCorrect) {
+    if (state.syllablesReviewMode) {
+      state.syllablesWeak = state.syllablesWeak.filter(x=>x!==syl);
+      saveProfile({ syllables_weak: state.syllablesWeak });
+      state.screen = 'syllables-map'; return;
+    }
+    state.syllablesMasteryCount = (state.syllablesMasteryCount||0) + 1;
+    if (state.syllablesMasteryCount >= 2) {
+      if (idx === state.syllablesIndex) {
+        state.syllablesIndex = idx + 1;
+        saveProfile({ syllables_index: state.syllablesIndex });
+        if (state.syllablesIndex >= SYLLABLES.length) { state.needsSyllables=false; saveProfile({needs_syllables:false}); state.screen='syllables-complete'; return; }
+      }
+      state.screen = 'syllables-map';
+    } else { syllablesPrepareQuiz(idx, false); }
+  } else {
+    state.syllablesMasteryCount = 0;
+    state.syllablesQuizFeedback = 'wrong';
+    if (!state.syllablesWeak.includes(syl)) {
+      state.syllablesWeak = [...state.syllablesWeak, syl];
+      saveProfile({ syllables_weak: state.syllablesWeak });
+    }
+  }
+}
 function screens() {
   const s = state;
   const track = s.track || 'elder';
@@ -574,9 +651,9 @@ function screens() {
   const currentScenario = SCENARIOS.find(sc=>sc.id===s.activeScenarioId) || SCENARIOS[0];
   const fs = FONT_SCALES[s.fontScaleIdx];
 
-  const topTitles = { home:'أمي', lessons:'الدروس', scenarios:'مواقف من الحياة', profile:'حسابي', lesson: currentLesson.title, mimicry:'قلّد القراءة', fluency:'القراءة المستقلة', 'scenario-detail': currentScenario.title, readiness: 'تحقق الجاهزية', 'level0-map':'الأساس: الحروف', 'level0-letter':'تعلّم الحرف', 'level0-quiz':'تمرين سريع' };
-  const showTopBar = !['splash','test','track-suggest','auth-phone','auth-otp','public-share','placement','level0-complete','assess-level','track-quick'].includes(s.screen);
-  const showBack = ['lesson','mimicry','fluency','scenario-detail','readiness','level0-letter','level0-quiz'].includes(s.screen);
+  const topTitles = { home:'أمي', lessons:'الدروس', scenarios:'مواقف من الحياة', profile:'حسابي', lesson: currentLesson.title, mimicry:'قلّد القراءة', fluency:'القراءة المستقلة', 'scenario-detail': currentScenario.title, readiness: 'تحقق الجاهزية', 'level0-map':'الأساس: الحروف', 'level0-letter':'تعلّم الحرف', 'level0-quiz':'تمرين سريع', 'syllables-map':'الحركات والمقاطع', 'harakat-guide':'دليل الحركات', 'syllables-item':'تعلّم المقطع', 'syllables-quiz':'تمرين المقطع' };
+  const showTopBar = !['splash','test','track-suggest','auth-phone','auth-otp','public-share','placement','level0-complete','assess-level','track-quick','syllables-complete'].includes(s.screen);
+  const showBack = ['lesson','mimicry','fluency','scenario-detail','readiness','level0-letter','level0-quiz','syllables-map','harakat-guide','syllables-item','syllables-quiz'].includes(s.screen);
   const showBottomNav = ['home','lessons','scenarios','profile'].includes(s.screen);
 
   let topbar = '';
@@ -675,7 +752,66 @@ function screens() {
       <div style="width:80px;height:80px;border-radius:50%;background:#3F8F5F;display:flex;align-items:center;justify-content:center;">${icon('<path d="M5 12l5 5L19 7" stroke="#fff" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>',34)}</div>
       <div style="font-size:20px;font-weight:800;">أتقنت الحروف العربية كلها! 🌿</div>
       <div style="font-size:14px;color:#5E6C72;line-height:1.7;max-width:280px;">حان الوقت لبدء قراءة الكلمات والجمل في دروسك</div>
-      <button class="btn-primary" data-act="gohome" style="width:100%;">ابدأ الدرس الأول</button>
+      <button class="btn-primary" data-act="level0donenext" style="width:100%;">ابدأ الدرس الأول</button>
+    </div>`;
+  } else if (s.screen === 'syllables-map') {
+    const pct = Math.round((s.syllablesIndex/SYLLABLES.length)*100);
+    content = `<div style="flex:1;display:flex;flex-direction:column;padding:20px 18px;gap:16px;">
+      <div class="card" style="background:${trackDef.accentSoft};border-color:${trackDef.accent};">
+        <div style="font-size:14px;font-weight:800;color:#26333B;">الحركات والمقاطع</div>
+        <div style="font-size:12px;color:#3F4B50;margin-top:6px;">الآن ندمج الحرف مع الحركة لتكوين مقطع — هذه الخطوة الحقيقية للقراءة</div>
+        <div style="height:8px;border-radius:5px;background:#fff;overflow:hidden;margin-top:12px;"><div style="height:100%;width:${pct}%;background:${trackDef.accent};border-radius:5px;"></div></div>
+        <div style="font-size:12px;color:#5E6C72;margin-top:6px;">${toArabicNum(s.syllablesIndex)} من ${toArabicNum(SYLLABLES.length)} مقاطع</div>
+      </div>
+      <button data-act="openharakatguide" style="height:50px;border-radius:14px;border:1px solid #E4D9C2;background:#fff;display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;">${icon('<circle cx="12" cy="12" r="9" stroke="#1F6B63" stroke-width="1.6" fill="none"/><path d="M12 8v5M12 16h.01" stroke="#1F6B63" stroke-width="1.8" stroke-linecap="round"/>',18)}<span style="font-size:14px;font-weight:700;">دليل الحركات</span></button>
+      ${s.syllablesWeak && s.syllablesWeak.length ? `<div class="card">
+        <div style="font-size:13px;font-weight:700;margin-bottom:10px;">🔁 مقاطع تحتاج مراجعة</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">${s.syllablesWeak.map(sy=>`<button data-act="opensyllablereview" data-syl="${sy}" style="height:44px;padding:0 14px;border-radius:12px;border:2px solid #B4802E;background:#F2E6CC;font-size:18px;font-weight:800;cursor:pointer;">${sy}</button>`).join('')}</div>
+      </div>` : ''}
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;">
+        ${SYLLABLES.map((x,i)=>{
+          const done = i < s.syllablesIndex; const current = i === s.syllablesIndex; const locked = i > s.syllablesIndex;
+          const bg = done ? '#DCEFE1' : current ? trackDef.accentSoft : '#F1EAD9';
+          const bd = done ? '#3F8F5F' : current ? trackDef.accent : '#E4D9C2';
+          return `<button data-act="${locked?'':'opensyllableitem'}" data-id="${i}" style="height:60px;border-radius:14px;border:2px solid ${bd};background:${bg};display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:800;cursor:${locked?'default':'pointer'};color:${locked?'#B7AD91':'#1A2529'};opacity:${locked?0.55:1};">${locked?icon('<path d="M6 10V7a6 6 0 0112 0v3M5 10h14a1 1 0 011 1v9a1 1 0 01-1 1H5a1 1 0 01-1-1v-9a1 1 0 011-1z" fill="none" stroke="#B7AD91" stroke-width="1.6"/>',16):x.syl}</button>`;
+        }).join('')}
+      </div>
+    </div>`;
+  } else if (s.screen === 'harakat-guide') {
+    content = `<div style="flex:1;display:flex;flex-direction:column;padding:20px 18px;gap:12px;">
+      <div style="font-size:13px;color:#5E6C72;">اضغط أي حركة لسماعها منطوقة فوق حرف الباء</div>
+      ${HARAKAT_GUIDE.map(h=>`<button data-act="playharakat" data-syl="${h.syl}" style="background:#fff;border:2px solid #C7BA9C;border-radius:16px;padding:14px 16px;display:flex;align-items:center;gap:16px;text-align:right;cursor:pointer;box-shadow:0 2px 6px rgba(26,37,41,.05);"><div style="font-size:32px;font-weight:800;color:${trackDef.accent};width:52px;text-align:center;">${h.syl}</div><div style="flex:1;"><div style="font-size:15px;font-weight:700;">${h.name}</div><div style="font-size:12px;color:#5E6C72;margin-top:3px;">${h.desc}</div></div>${icon('<path d="M8 5v14l11-7z" fill="#1F6B63"/>',18)}</button>`).join('')}
+    </div>`;
+  } else if (s.screen === 'syllables-item') {
+    const x = SYLLABLES[s.syllablesViewIndex];
+    content = `<div style="flex:1;display:flex;flex-direction:column;padding:22px 18px;gap:18px;">
+      <div class="card" style="text-align:center;border-radius:22px;padding:32px 18px;">
+        <div style="font-size:60px;font-weight:800;color:${trackDef.accent};line-height:1;">${x.syl}</div>
+      </div>
+      <button data-act="syllableplay" style="height:50px;border-radius:14px;border:1px solid #E4D9C2;background:#fff;display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;">${icon('<path d="M8 5v14l11-7z" fill="#1F6B63"/>',18)}<span style="font-size:14px;font-weight:700;">اسمع المقطع</span></button>
+      <button data-act="syllableplayword" style="background:${trackDef.accentSoft};border:none;border-radius:16px;padding:16px;text-align:center;cursor:pointer;">
+        <div style="font-size:12px;color:#5E6C72;margin-bottom:6px;">كلمة تحتوي هذا المقطع</div>
+        <div style="font-size:24px;font-weight:800;color:#26333B;">${x.word}</div>
+      </button>
+      <button class="btn-primary" data-act="syllablegotoquiz" style="margin-top:auto;">التالي: تمرين قصير</button>
+    </div>`;
+  } else if (s.screen === 'syllables-quiz') {
+    const isSound = s.syllablesExerciseType === 'sound';
+    content = `<div style="flex:1;display:flex;flex-direction:column;padding:22px 18px;gap:20px;">
+      <div style="display:flex;gap:6px;justify-content:center;">${[0,1].map(i=>`<div class="step-dot" style="width:22px;background:${i<s.syllablesMasteryCount?'#3F8F5F':'#E4D9C2'};"></div>`).join('')}</div>
+      <div style="text-align:center;font-size:15px;color:#5E6C72;">${isSound?'استمع جيدًا ثم اختر المقطع الذي سمعته':'اختر الكلمة التي تحتوي هذا المقطع'}</div>
+      ${isSound?`<button data-act="syllableplayquiz" style="width:96px;height:96px;border-radius:50%;border:none;background:${trackDef.accent};cursor:pointer;display:flex;align-items:center;justify-content:center;margin:0 auto;">${icon('<path d="M8 5v14l11-7z" fill="#fff"/>',34)}</button>`:`<div style="text-align:center;font-size:44px;font-weight:800;color:${trackDef.accent};">${SYLLABLES[s.syllablesViewIndex].syl}</div>`}
+      ${s.syllablesQuizFeedback==='wrong' ? `<div style="text-align:center;font-size:14px;color:#B4802E;font-weight:700;">ليس تمامًا — حاول مجددًا</div>` : ''}
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;">
+        ${s.syllablesQuizOptions.map(o=>`<button data-act="syllablechoose" data-opt="${o}" style="aspect-ratio:1;border-radius:16px;border:2px solid #C7BA9C;background:#fff;font-size:${isSound?34:16}px;font-weight:800;cursor:pointer;box-shadow:0 2px 6px rgba(26,37,41,.05);">${o}</button>`).join('')}
+      </div>
+    </div>`;
+  } else if (s.screen === 'syllables-complete') {
+    content = `<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;text-align:center;padding:32px;">
+      <div style="width:80px;height:80px;border-radius:50%;background:#3F8F5F;display:flex;align-items:center;justify-content:center;">${icon('<path d="M5 12l5 5L19 7" stroke="#fff" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>',34)}</div>
+      <div style="font-size:20px;font-weight:800;">أتقنت دمج الحروف بالحركات! 🌿</div>
+      <div style="font-size:14px;color:#5E6C72;line-height:1.7;max-width:280px;">الآن تستطيع فك فعليّاً كلمات وجملًا جديدة لم ترها من قبل</div>
+      <button class="btn-primary" data-act="gohome" style="width:100%;">ابدأ الدروس الأول</button>
     </div>`;
   } else if (s.screen === 'public-share') {
     const share = s.publicShare;
@@ -751,6 +887,7 @@ function screens() {
     content = `<div style="flex:1;display:flex;flex-direction:column;padding:20px 18px;gap:18px;">
       <div style="display:flex;justify-content:space-between;align-items:center;"><div><div style="font-size:18px;font-weight:800;color:#26333B;">أهلاً بعودتك</div><div style="font-size:13px;color:#5E6C72;">استمر من حيث توقفت</div></div>${s.streak>0?`<div style="display:flex;align-items:center;gap:6px;background:${trackDef.accentSoft};border-radius:12px;padding:8px 12px;"><div style="width:8px;height:8px;border-radius:50%;background:${trackDef.accent};"></div><div style="font-size:13px;font-weight:700;color:#26333B;">${toArabicNum(s.streak)} ${s.streak===1?'يوم':'أيام'} متتالية</div></div>`:''}</div>
       ${pendingLevel ? `<button data-act="openreadiness" data-id="${pendingLevel}" style="background:${trackDef.accent};border:none;border-radius:16px;padding:16px;text-align:right;cursor:pointer;color:#fff;"><div style="font-size:14px;font-weight:800;">أكملت المستوى الحالي! 🎉</div><div style="font-size:13px;margin-top:4px;opacity:0.9;">اضغط هنا لتحقق قصير يفتح المستوى التالي</div></button>` : ''}
+      ${s.todayLessonsCount >= 5 ? `<div class="card" style="background:#F1EAD9;border-color:#C7BA9C;text-align:center;"><div style="font-size:13px;font-weight:700;">🌿 أحسنت اليوم! خذ قسطًا من الراحة وعد غدًا لإكمال المزيد</div></div>` : ''}
       ${s.reviewLessonId ? `<button data-act="openlesson" data-id="${s.reviewLessonId}" style="background:#F2E6CC;border:2px solid #B4802E;border-radius:16px;padding:14px 16px;text-align:right;cursor:pointer;"><div style="font-size:13px;font-weight:800;color:#26333B;">🔁 يحتاج مراجعة</div><div style="font-size:13px;margin-top:4px;color:#5E6C72;">${(LESSONS.find(l=>l.id===s.reviewLessonId)||{}).title||''}</div></button>` : ''}
       <div class="card" style="border-radius:20px;">
         <div style="font-size:13px;color:#8A968C;">الدرس التالي</div>
@@ -837,6 +974,7 @@ function screens() {
       </div></div>
       <button data-act="logout" style="height:54px;border-radius:12px;border:2px solid #C7BA9C;background:#fff;color:#C0392B;font-size:15px;font-weight:700;cursor:pointer;">تسجيل الخروج</button>
       <button data-act="openlevel0map" style="height:54px;border-radius:12px;border:2px solid #C7BA9C;background:#fff;color:#1A2529;font-size:15px;font-weight:700;cursor:pointer;">مراجعة الحروف الهجائية</button>
+      <button data-act="opensyllablesmap" style="height:54px;border-radius:12px;border:2px solid #C7BA9C;background:#fff;color:#1A2529;font-size:15px;font-weight:700;cursor:pointer;">مراجعة الحركات والمقاطع</button>
       <button data-act="retakeassessment" style="height:54px;border-radius:12px;border:2px solid #C7BA9C;background:#fff;color:#1A2529;font-size:15px;font-weight:700;cursor:pointer;">إعادة اختبار التموضع</button>
       <div class="card">
         <div style="font-size:14px;font-weight:700;margin-bottom:4px;">متابعة من الأهل</div>
@@ -888,7 +1026,17 @@ function screens() {
       </div>
     </div>`;
   } else if (s.screen === 'fluency') {
-    if (s.fluencyStage !== 'done') {
+    if (s.fluencyStage === 'confirm') {
+      content = `<div style="flex:1;display:flex;flex-direction:column;padding:22px 18px;gap:20px;justify-content:center;">
+        <div class="card" style="text-align:center;"><div style="font-size:16px;font-weight:700;">قبل الحفظ، تأكّد من نفسك</div></div>
+        <button data-act="togglefluencyconfirm" style="display:flex;align-items:center;gap:12px;background:#fff;border:2px solid ${s.fluencyConfirmed?'#3F8F5F':'#C7BA9C'};border-radius:14px;padding:16px;cursor:pointer;text-align:right;">
+          <div style="width:26px;height:26px;border-radius:7px;border:2px solid ${s.fluencyConfirmed?'#3F8F5F':'#C7BA9C'};background:${s.fluencyConfirmed?'#3F8F5F':'#fff'};display:flex;align-items:center;justify-content:center;flex-shrink:0;">${s.fluencyConfirmed?icon('<path d="M5 12l5 5L19 7" stroke="#fff" stroke-width="2.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>',16):''}</div>
+          <div style="font-size:14px;font-weight:700;">قرأت النص كاملاً وبدقة قدر المستطاع</div>
+        </button>
+        <button class="btn-primary" data-act="confirmfluencydone" ${s.fluencyConfirmed?'':'disabled'} style="opacity:${s.fluencyConfirmed?1:.5};">تأكيد الإنجاز</button>
+        <button class="btn-outline" data-act="gofluency">إعادة المحاولة</button>
+      </div>`;
+    } else if (s.fluencyStage !== 'done') {
       const mm=Math.floor(s.fluencyElapsed/60), ss=s.fluencyElapsed%60;
       content = `<div style="flex:1;display:flex;flex-direction:column;padding:22px 18px;gap:18px;">
         <div style="font-size:14px;color:#5E6C72;line-height:1.7;">اقرأ الفقرة التالية بصوتك على راحتك، بدون أي تظليل.</div>
@@ -984,23 +1132,43 @@ document.getElementById('app').addEventListener('click', async (e) => {
   if (act==='goauth') state.screen='auth-phone';
   else if (act==='placementeasy' || act==='placementhard' || act==='placementno') {
     state.needsLevel0 = act==='placementno';
-    saveProfile({ placement_done: true, needs_level0: state.needsLevel0 });
+    state.needsSyllables = act==='placementno';
+    saveProfile({ placement_done: true, needs_level0: state.needsLevel0, needs_syllables: state.needsSyllables });
     state.screen = state.needsLevel0 ? 'track-quick' : 'assess-level';
     state.assessStep = 1;
   }
   else if (act==='assesseasy' || act==='assesshard') {
     if (state.assessStep === 1) {
       if (act==='assesseasy') { state.assessStep = 2; }
-      else { state.readinessLevel = 0; saveProfile({ readiness_level: 0 }); state.screen = 'track-quick'; }
+      else { state.readinessLevel = 0; state.needsSyllables = true; saveProfile({ readiness_level: 0, needs_syllables: true }); state.screen = 'track-quick'; }
     } else {
       state.readinessLevel = act==='assesseasy' ? 4 : 2;
       saveProfile({ readiness_level: state.readinessLevel });
       state.screen = 'track-quick';
     }
   }
-  else if (act==='trackquickyes') { state.track='elder'; state.highlightMode='letter'; saveProfile({track:'elder'}); state.screen = state.needsLevel0?'level0-map':'home'; state.activeTab='home'; }
-  else if (act==='trackquickno') { state.track='nonnative'; state.highlightMode='word'; saveProfile({track:'nonnative'}); state.screen = state.needsLevel0?'level0-map':'home'; state.activeTab='home'; }
+  else if (act==='trackquickyes') { state.track='elder'; state.highlightMode='letter'; saveProfile({track:'elder'}); state.screen = state.needsLevel0?'level0-map':(state.needsSyllables?'syllables-map':'home'); state.activeTab='home'; }
+  else if (act==='trackquickno') { state.track='nonnative'; state.highlightMode='word'; saveProfile({track:'nonnative'}); state.screen = state.needsLevel0?'level0-map':(state.needsSyllables?'syllables-map':'home'); state.activeTab='home'; }
   else if (act==='openlevel0map') { state.screen='level0-map'; }
+  else if (act==='level0donenext') { state.screen = state.needsSyllables ? 'syllables-map' : 'home'; state.activeTab='home'; }
+  else if (act==='opensyllablesmap') { state.screen='syllables-map'; }
+  else if (act==='openharakatguide') { state.screen='harakat-guide'; }
+  else if (act==='playharakat') { speakTextEL(btn.dataset.syl); return; }
+  else if (act==='opensyllableitem') { state.syllablesViewIndex=id; state.syllablesMasteryCount=0; state.screen='syllables-item'; }
+  else if (act==='syllableplay') { speakTextEL(SYLLABLES[state.syllablesViewIndex].syl); return; }
+  else if (act==='syllableplayword') { speakTextEL(SYLLABLES[state.syllablesViewIndex].word); return; }
+  else if (act==='syllablegotoquiz') { syllablesPrepareQuiz(state.syllablesViewIndex, false); return; }
+  else if (act==='opensyllablereview') {
+    const syl = btn.dataset.syl;
+    const idx = SYLLABLES.findIndex(x=>x.syl===syl);
+    syllablesPrepareQuiz(idx, true);
+    return;
+  }
+  else if (act==='syllableplayquiz') {
+    const text = state.syllablesExerciseType==='sound' ? SYLLABLES[state.syllablesViewIndex].syl : SYLLABLES[state.syllablesViewIndex].word;
+    speakTextEL(text); return;
+  }
+  else if (act==='syllablechoose') { syllablesHandleAnswer(btn.dataset.opt === state.syllablesQuizCorrect); }
   else if (act==='retakeassessment') { state.assessStep=1; state.screen='placement'; }
   else if (act==='openlevel0letter') { state.level0ViewIndex=id; state.level0MasteryCount=0; state.screen='level0-letter'; }
   else if (act==='level0playletter') { const L=LEVEL0_LETTERS[state.level0ViewIndex]; speakTextEL(L.name); return; }
@@ -1044,7 +1212,7 @@ document.getElementById('app').addEventListener('click', async (e) => {
   else if (act==='openlesson') { state.currentLessonId=id; state.screen='lesson'; state.highlightMode = state.track==='elder'?'letter':'word'; state._playing=false; state._playIdx=-1; render(); autoPlayCurrent(); return; }
   else if (act==='openmimicry') { if(id) state.currentLessonId=id; state.screen='mimicry'; state.mimicryStage='idle'; }
   else if (act==='openscenario') { state.activeScenarioId=id; state.screen='scenario-detail'; state._playing=false; state._playIdx=-1; render(); autoPlayCurrent(); return; }
-  else if (act==='back') { if(['lesson','fluency','readiness'].includes(state.screen)) state.screen='home'; else if(state.screen==='mimicry') state.screen='lesson'; else if(state.screen==='scenario-detail') state.screen='scenarios'; else if(state.screen==='level0-letter') state.screen='level0-map'; else if(state.screen==='level0-quiz') state.screen='level0-letter'; else state.screen=state.activeTab; state._playing=false; stopSpeaking(); if(playTimer) clearInterval(playTimer); }
+  else if (act==='back') { if(['lesson','fluency','readiness'].includes(state.screen)) state.screen='home'; else if(state.screen==='mimicry') state.screen='lesson'; else if(state.screen==='scenario-detail') state.screen='scenarios'; else if(state.screen==='level0-letter') state.screen='level0-map'; else if(state.screen==='level0-quiz') state.screen='level0-letter'; else if(['syllables-item','harakat-guide'].includes(state.screen)) state.screen='syllables-map'; else if(state.screen==='syllables-quiz') state.screen='syllables-item'; else state.screen=state.activeTab; state._playing=false; stopSpeaking(); if(playTimer) clearInterval(playTimer); }
   else if (act==='fontup') { state.fontScaleIdx=Math.min(2,state.fontScaleIdx+1); saveProfile({font_scale:FONT_SCALES[state.fontScaleIdx]}); }
   else if (act==='fontdown') { state.fontScaleIdx=Math.max(0,state.fontScaleIdx-1); saveProfile({font_scale:FONT_SCALES[state.fontScaleIdx]}); }
   else if (act==='setfont') { state.fontScaleIdx=Number(btn.dataset.idx); saveProfile({font_scale:FONT_SCALES[state.fontScaleIdx]}); }
@@ -1083,8 +1251,14 @@ document.getElementById('app').addEventListener('click', async (e) => {
   }
   else if (act==='finishfluency') {
     if (fluencyTimer) clearInterval(fluencyTimer);
-    const fluencyText = 'صباحُ الخيرِ يا جارتي، كيف حالُك اليوم؟ الشايُ جاهزٌ، تفضّلي واجلسي معنا قليلًا.';
     await stopRecordingAndSave('fluency', null, state.fluencyElapsed);
+    state.fluencyConfirmed = false;
+    state.fluencyStage = 'confirm';
+  }
+  else if (act==='togglefluencyconfirm') { state.fluencyConfirmed = !state.fluencyConfirmed; }
+  else if (act==='confirmfluencydone') {
+    if (!state.fluencyConfirmed) return render();
+    const fluencyText = 'صباحُ الخيرِ يا جارتي، كيف حالُك اليوم؟ الشايُ جاهزٌ، تفضّلي واجلسي معنا قليلًا.';
     await recordFluencyWpm(fluencyText, state.fluencyElapsed);
     state.fluencyStage='done'; logActivity();
     await loadProgressStats();
