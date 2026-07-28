@@ -83,11 +83,11 @@ async function loadContent() {
   try {
     const { data: lessons, error: lErr } = await sb.from('lessons').select('*').order('order_index');
     if (!lErr && lessons && lessons.length) {
-      LESSONS = lessons.map((l,i) => ({ id: l.id, num: toArabicNum(i+1), title: l.title, text: l.body_text, tag: l.tag || '' }));
+      LESSONS = lessons.map((l,i) => ({ id: l.id, num: toArabicNum(i+1), title: l.title, text: l.body_text, tag: l.tag || '', audioUrl: l.audio_model_url || null, alignment: l.alignment_json || null }));
     }
     const { data: scenarios, error: scErr } = await sb.from('scenarios').select('*').order('order_index');
     if (!scErr && scenarios && scenarios.length) {
-      SCENARIOS = scenarios.map(sc => ({ id: sc.id, title: sc.title, text: sc.body_text }));
+      SCENARIOS = scenarios.map(sc => ({ id: sc.id, title: sc.title, text: sc.body_text, audioUrl: sc.audio_model_url || null, alignment: sc.alignment_json || null }));
     }
   } catch(e) { console.warn('content load failed, using fallback', e); }
 }
@@ -103,6 +103,7 @@ const state = {
   authLoading: false, mimicryStage: 'idle', fluencyStage: 'idle', fluencyElapsed: 0,
   activeScenarioId: 1, myRecordingUrl: null, micError: '', userId: null,
   streak: 0, completedCount: 0, totalLessons: 0, recordingsCount: 0, recentRecordings: [],
+  avgWpm: null, recordStartTs: null,
 };
 let mediaRecorder = null, audioChunks = [], mediaStream = null, fluencyTimer = null, playTimer = null;
 
@@ -152,6 +153,7 @@ async function loadProfile(userId) {
     const idx = FONT_SCALES.indexOf(Number(profile.font_scale));
     state.track = profile.track || null;
     state.fontScaleIdx = idx >= 0 ? idx : 1;
+    state.avgWpm = profile.avg_wpm || null;
     state.screen = profile.track ? 'home' : 'test';
     state.activeTab = 'home';
   }
@@ -209,7 +211,7 @@ async function startRecording() {
     return true;
   } catch(e) { state.micError = 'تعذّر الوصول للميكروفون'; return false; }
 }
-function stopRecordingAndSave(kind, lessonId) {
+function stopRecordingAndSave(kind, lessonId, durationSeconds) {
   return new Promise(resolve => {
     if (!mediaRecorder || mediaRecorder.state==='inactive') { resolve(null); return; }
     mediaRecorder.onstop = async () => {
@@ -217,21 +219,28 @@ function stopRecordingAndSave(kind, lessonId) {
       if (mediaStream) mediaStream.getTracks().forEach(t=>t.stop());
       const url = URL.createObjectURL(blob);
       state.myRecordingUrl = url;
-      uploadRecording(blob, kind, lessonId);
+      uploadRecording(blob, kind, lessonId, durationSeconds);
       resolve(url);
     };
     mediaRecorder.stop();
   });
 }
-async function uploadRecording(blob, kind, lessonId) {
+async function uploadRecording(blob, kind, lessonId, durationSeconds) {
   if (!state.userId) return;
   try {
     const path = `${state.userId}/${kind}_${Date.now()}.webm`;
     const { error } = await sb.storage.from('recordings').upload(path, blob, { contentType: 'audio/webm' });
     if (error) return;
-    await sb.from('recordings').insert({ user_id: state.userId, kind, lesson_id: kind==='mimicry'?lessonId:null, audio_url: path });
+    await sb.from('recordings').insert({ user_id: state.userId, kind, lesson_id: kind==='mimicry'?lessonId:null, audio_url: path, duration_seconds: durationSeconds || null });
     await loadProgressStats();
   } catch(e) {}
+}
+async function recordFluencyWpm(text, seconds) {
+  if (!state.userId || !seconds) return;
+  const wordCount = text.trim().split(/\s+/).length;
+  const wpm = Math.round(wordCount / (seconds/60));
+  state.avgWpm = state.avgWpm ? Math.round(state.avgWpm*0.7 + wpm*0.3) : wpm;
+  await saveProfile({ avg_wpm: state.avgWpm });
 }
 
 const ELEVENLABS_VOICE_ID = 'pNInz6obpgDQGcFmaJgB';
@@ -296,10 +305,34 @@ function speakText(text, onBoundaryToken, onEnd) {
 function stopSpeaking() { if (window.speechSynthesis) window.speechSynthesis.cancel(); if (_currentAudio) { _currentAudio.pause(); _currentAudio = null; } }
 
 function tokensFor(text, mode) {
-  if (mode === 'letter') return Array.from(text).map(ch => ({ text: ch, isSpace: ch===' ' }));
-  const words = text.split(' '); const out = [];
-  words.forEach((w,i) => { out.push({text:w,isSpace:false}); if (i<words.length-1) out.push({text:'\u00A0',isSpace:true}); });
+  if (mode === 'letter') return Array.from(text).map((ch,i) => ({ text: ch, isSpace: ch===' ', startChar: i }));
+  const words = text.split(' '); const out = []; let charIdx = 0;
+  words.forEach((w,i) => {
+    out.push({text:w, isSpace:false, startChar: charIdx});
+    charIdx += w.length;
+    if (i<words.length-1) { out.push({text:'\u00A0', isSpace:true, startChar: charIdx}); charIdx += 1; }
+  });
   return out;
+}
+function playWithAlignmentAudio(item, mode, onDone) {
+  const tokens = tokensFor(item.text, mode);
+  const times = item.alignment.character_start_times_seconds || [];
+  if (_currentAudio) _currentAudio.pause();
+  const audio = new Audio(item.audioUrl);
+  _currentAudio = audio;
+  state._playing = true; state._playIdx = 0;
+  audio.ontimeupdate = () => {
+    const t = audio.currentTime;
+    let idx = -1;
+    for (let i=0;i<tokens.length;i++) {
+      const ct = times[tokens[i].startChar];
+      if (ct !== undefined && ct <= t) idx = i; else break;
+    }
+    if (idx !== state._playIdx) { state._playIdx = idx; render(); }
+  };
+  audio.onended = () => { state._playing=false; state._playIdx=-1; render(); if (onDone) onDone(); };
+  audio.onerror = () => { state._playing=false; state._playIdx=-1; render(); };
+  audio.play();
 }
 
 function screens() {
@@ -402,6 +435,7 @@ function screens() {
           <div style="font-size:13px;color:#3F4B50;">التسجيلات الصوتية</div>
           <div style="font-size:15px;font-weight:800;color:#26333B;">${toArabicNum(s.recordingsCount)}</div>
         </div>
+        ${s.avgWpm ? `<div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;"><div style="font-size:13px;color:#3F4B50;">سرعة القراءة التقريبية</div><div style="font-size:15px;font-weight:800;color:#26333B;">${toArabicNum(s.avgWpm)} كلمة/دقيقة</div></div><div style="font-size:12px;color:#8A968C;margin-top:4px;">${s.avgWpm<40?'طلاقة ناشئة — استمر بالتدرب':(s.avgWpm<80?'طلاقة متوسطة، تقدّم جيد':'طلاقة جيدة، أحسنت')}</div>` : ''}
         ${s.recentRecordings && s.recentRecordings.length ? `<div style="margin-top:14px;display:flex;flex-direction:column;gap:8px;">${s.recentRecordings.map(r=>`<div style="display:flex;justify-content:space-between;font-size:12px;color:#5E6C72;background:#F1EAD9;border-radius:8px;padding:8px 10px;"><span>${kindLabel[r.kind]||r.kind}</span><span>${new Date(r.created_at).toLocaleDateString('ar')}</span></div>`).join('')}</div>` : ''}
       </div>
       <div class="card"><div style="font-size:14px;font-weight:700;margin-bottom:12px;">حجم الخط</div>
@@ -498,9 +532,10 @@ function render() {
   if (otpInput) otpInput.oninput = e => { state.otpCode = e.target.value; state.authError=''; };
 }
 
-function startPlayback(text, mode) {
+function startPlayback(text, mode, item) {
   if (playTimer) clearInterval(playTimer);
   stopSpeaking();
+  if (item && item.audioUrl && item.alignment) { playWithAlignmentAudio(item, mode); return; }
   const toks = tokensFor(text, mode);
   const speed = mode === 'letter' ? 150 : 480;
   state._playing = true; state._playIdx = 0;
@@ -514,10 +549,10 @@ function startPlayback(text, mode) {
 function autoPlayCurrent() {
   if (state.screen === 'lesson') {
     const lesson = LESSONS.find(l=>l.id===state.currentLessonId);
-    if (lesson) startPlayback(lesson.text, state.highlightMode);
+    if (lesson) startPlayback(lesson.text, state.highlightMode, lesson);
   } else if (state.screen === 'scenario-detail') {
     const sc = SCENARIOS.find(x=>x.id===state.activeScenarioId);
-    if (sc) startPlayback(sc.text, 'word');
+    if (sc) startPlayback(sc.text, 'word', sc);
   }
 }
 
@@ -550,12 +585,12 @@ document.getElementById('app').addEventListener('click', async (e) => {
   else if (act==='toggleplay') {
     if (state._playing) { if(playTimer) clearInterval(playTimer); stopSpeaking(); state._playing=false; }
     else {
-      const text = state.screen==='scenario-detail' ? SCENARIOS.find(x=>x.id===state.activeScenarioId).text : LESSONS.find(x=>x.id===state.currentLessonId).text;
+      const item = state.screen==='scenario-detail' ? SCENARIOS.find(x=>x.id===state.activeScenarioId) : LESSONS.find(x=>x.id===state.currentLessonId);
       const mode = state.screen==='scenario-detail' ? 'word' : state.highlightMode;
-      startPlayback(text, mode);
+      startPlayback(item.text, mode, item);
     }
   }
-  else if (act==='playmodel') { const text = LESSONS.find(x=>x.id===state.currentLessonId).text; speakTextEL(text); return; }
+  else if (act==='playmodel') { const lesson = LESSONS.find(x=>x.id===state.currentLessonId); if (lesson.audioUrl) new Audio(lesson.audioUrl).play(); else speakTextEL(lesson.text); return; }
   else if (act==='startmimicry') {
     state.mimicryStage='recording'; render();
     const ok = await startRecording();
@@ -574,7 +609,9 @@ document.getElementById('app').addEventListener('click', async (e) => {
   }
   else if (act==='finishfluency') {
     if (fluencyTimer) clearInterval(fluencyTimer);
-    await stopRecordingAndSave('fluency', null);
+    const fluencyText = 'صباحُ الخيرِ يا جارتي، كيف حالُك اليوم؟ الشايُ جاهزٌ، تفضّلي واجلسي معنا قليلًا.';
+    await stopRecordingAndSave('fluency', null, state.fluencyElapsed);
+    await recordFluencyWpm(fluencyText, state.fluencyElapsed);
     state.fluencyStage='done'; logActivity();
     await loadProgressStats();
   }
