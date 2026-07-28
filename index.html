@@ -45,18 +45,40 @@ const FALLBACK_LESSONS = [
   {id:3, num:'٣', title:'الحمد لله على كل حال', text:'الحمد لله على كل حال', tag:'ديني'},
   {id:4, num:'٤', title:'الشاي جاهز، تفضل', text:'الشاي جاهز تفضل', tag:'يومي'},
   {id:5, num:'٥', title:'أين أقرب صيدلية؟', text:'من فضلك أين أقرب صيدلية', tag:'يومي'},
+  {id:6, num:'٦', title:'سبحان الله وبحمده', text:'سبحان الله وبحمده', tag:'ديني'},
+  {id:7, num:'٧', title:'مساء الخير والبركة عليكم', text:'مساء الخير والبركة عليكم', tag:'يومي'},
+  {id:8, num:'٨', title:'اللهم صل على النبي', text:'اللهم صل على النبي محمد', tag:'ديني'},
+  {id:9, num:'٩', title:'كيف حالك اليوم؟', text:'كيف حالك اليوم يا صاحبي', tag:'يومي'},
+  {id:10, num:'١٠', title:'الفطور جاهز على المائدة', text:'الفطور جاهز على المائدة تفضلوا', tag:'يومي'},
+  {id:11, num:'١١', title:'لا إله إلا الله', text:'لا إله إلا الله محمد رسول الله', tag:'ديني'},
+  {id:12, num:'١٢', title:'أحتاج موعدًا عند الطبيب', text:'أحتاج موعدًا عند الطبيب غدًا', tag:'يومي'},
+  {id:13, num:'١٣', title:'الله أكبر كبيرًا', text:'الله أكبر كبيرًا والحمد لله كثيرًا', tag:'ديني'},
+  {id:14, num:'١٤', title:'تصبح على خير', text:'تصبح على خير يا أهل البيت', tag:'يومي'},
+  {id:15, num:'١٥', title:'أستغفر الله العظيم', text:'أستغفر الله العظيم وأتوب إليه', tag:'ديني'},
+  {id:16, num:'١٦', title:'هل تحتاج مساعدة؟', text:'هل تحتاج مساعدة يا جاري', tag:'يومي'},
+  {id:17, num:'١٧', title:'ربنا آتنا في الدنيا حسنة', text:'ربنا آتنا في الدنيا حسنة وفي الآخرة حسنة', tag:'ديني'},
+  {id:18, num:'١٨', title:'الجو جميل اليوم', text:'الجو جميل اليوم فلنخرج للتنزه', tag:'يومي'},
+  {id:19, num:'١٩', title:'بارك الله فيك', text:'بارك الله فيك وجزاك خيرًا', tag:'ديني'},
+  {id:20, num:'٢٠', title:'الحساب كم يكون من فضلك؟', text:'الحساب كم يكون من فضلك', tag:'يومي'},
 ];
 const FALLBACK_SCENARIOS = [
   {id:1, title:'قراءة علبة الدواء', text:'يُؤخذ قرص واحد بعد الطعام'},
   {id:2, title:'رسالة من الابن', text:'بابا وصلت بالسلامة سأتصل بك مساءً'},
   {id:3, title:'لافتة الشارع', text:'ممنوع الوقوف الطريق مغلق'},
   {id:4, title:'قائمة الطعام', text:'دجاج مشوي مع الأرز خمسة وعشرون ريالا'},
+  {id:5, title:'وصفة طبية', text:'خذ الحبة مرتين يوميًا قبل النوم'},
+  {id:6, title:'إشعار البنك', text:'يرجى إدخال الرقم السري للمتابعة'},
+  {id:7, title:'موعد عيادة الطبيب', text:'موعدك الثلاثاء القادم الساعة العاشرة صباحًا'},
+  {id:8, title:'تعليمات المصعد الكهربائي', text:'يُرجى إطفاء الأنوار قبل المغادرة'},
+  {id:9, title:'تعليمات جهاز قياس الضغط', text:'اجلس بهدوء ثم اضغط على الزر الأخضر'},
+  {id:10, title:'إعلان في المسجد', text:'صلاة الجمعة الساعة الثانية عشرة والنصف'},
+  {id:11, title:'فاتورة الكهرباء', text:'المبلغ المستحق مئتان وخمسون ريالا'},
+  {id:12, title:'تذكرة الحافلة', text:'الرحلة القادمة الساعة الرابعة عصرًا من الرصيف الثالث'},
 ];
 const ARABIC_NUMS = ['٠','١','٢','٣','٤','٥','٦','٧','٨','٩'];
 function toArabicNum(n) { return String(n).split('').map(d => ARABIC_NUMS[+d] ?? d).join(''); }
 let LESSONS = FALLBACK_LESSONS.slice();
 let SCENARIOS = FALLBACK_SCENARIOS.slice();
-
 async function loadContent() {
   try {
     const { data: lessons, error: lErr } = await sb.from('lessons').select('*').order('order_index');
@@ -197,18 +219,18 @@ async function uploadRecording(blob, kind, lessonId) {
   } catch(e) {}
 }
 
-const ELEVENLABS_API_KEY = 'sk_52d1a02b5b3de76d703a22ebffa01a1594c83228871027f3';
 const ELEVENLABS_VOICE_ID = 'pNInz6obpgDQGcFmaJgB';
+const TTS_PROXY_URL = `${SUPABASE_URL}/functions/v1/tts-proxy`;
 let _currentAudio = null;
 
 async function speakTextEL(text, onEnd) {
   try {
-    const res = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${ELEVENLABS_VOICE_ID}`, {
+    const res = await fetch(TTS_PROXY_URL, {
       method: 'POST',
-      headers: { 'xi-api-key': ELEVENLABS_API_KEY, 'Content-Type': 'application/json', 'Accept': 'audio/mpeg' },
-      body: JSON.stringify({ text, model_id: 'eleven_multilingual_v2', voice_settings: { stability: 0.5, similarity_boost: 0.75 } }),
+      headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` },
+      body: JSON.stringify({ text, voiceId: ELEVENLABS_VOICE_ID }),
     });
-    if (!res.ok) throw new Error('TTS request failed');
+    if (!res.ok) throw new Error('TTS proxy request failed');
     const blob = await res.blob();
     const url = URL.createObjectURL(blob);
     if (_currentAudio) { _currentAudio.pause(); }
@@ -217,7 +239,7 @@ async function speakTextEL(text, onEnd) {
     _currentAudio.onerror = () => { if (onEnd) onEnd(); };
     await _currentAudio.play();
   } catch (e) {
-    console.warn('ElevenLabs TTS failed, falling back to browser voice', e);
+    console.warn('TTS proxy failed, falling back to browser voice', e);
     speakText(text, null, onEnd);
   }
 }
@@ -313,7 +335,7 @@ function screens() {
       <button data-act="goscenarios" style="background:${trackDef.accentSoft};border:none;border-radius:16px;padding:16px;text-align:right;cursor:pointer;font-size:14px;font-weight:700;color:#26333B;">مواقف من الحياة اليومية</button>
       <div style="font-size:14px;font-weight:700;color:#26333B;">دروس مقترحة لك</div>
       <div style="display:flex;flex-direction:column;gap:10px;">
-        ${LESSONS.slice(1,3).map(l=>`<button data-act="openlesson" data-id="${l.id}" style="background:#fff;border:1px solid #E4D9C2;border-radius:14px;padding:12px 14px;display:flex;align-items:center;gap:12px;text-align:right;cursor:pointer;"><div style="width:34px;height:34px;border-radius:10px;background:#F1EAD9;display:flex;align-items:center;justify-content:center;font-weight:700;">${l.num}</div><div style="flex:1;font-size:14px;font-weight:600;">${l.title}</div></button>`).join('')}
+        ${LESSONS.slice(1,4).map(l=>`<button data-act="openlesson" data-id="${l.id}" style="background:#fff;border:1px solid #E4D9C2;border-radius:14px;padding:12px 14px;display:flex;align-items:center;gap:12px;text-align:right;cursor:pointer;"><div style="width:34px;height:34px;border-radius:10px;background:#F1EAD9;display:flex;align-items:center;justify-content:center;font-weight:700;">${l.num}</div><div style="flex:1;font-size:14px;font-weight:600;">${l.title}</div></button>`).join('')}
       </div>
     </div>`;
   } else if (s.screen === 'lessons') {
