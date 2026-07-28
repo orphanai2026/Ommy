@@ -4,9 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>أمي — مدرّب القراءة العربية بالصوت</title>
-<meta name="app-version" content="v2.1.0">
+<meta name="app-version" content="v2.3.0">
 <meta name="copyright" content="© 2026 مشروع أمي. جميع الحقوق محفوظة.">
-<!-- التحديثات v2.1.0: تثبيت التطبيق كأيقونة على الشاشة الرئيسية (PWA)، تكرار متباعد ذكي للحروف/الدروس الضعيفة -->
+<!-- التحديثات v2.3.0: زر "إعادة اختبار التموضع" في الحساب لإعادة تحديد المستوى والمسار في أي وقت -->
 <link rel="manifest" href="./manifest.json">
 <meta name="theme-color" content="#1F6B63">
 <link rel="apple-touch-icon" href="./icon-192.png">
@@ -39,7 +39,7 @@
 </head>
 <body>
 <div id="app"><div class="shell" id="shell"></div></div>
-<div style="position:fixed;bottom:6px;left:50%;transform:translateX(-50%);font-size:10px;color:#8A968C;background:#FAF5EA;padding:2px 10px;border-radius:8px;z-index:999;">© 2026 أمي — جميع الحقوق محفوظة · v2.1.0</div>
+<div style="position:fixed;bottom:6px;left:50%;transform:translateX(-50%);font-size:10px;color:#8A968C;background:#FAF5EA;padding:2px 10px;border-radius:8px;z-index:999;">© 2026 أمي — جميع الحقوق محفوظة · v2.3.0</div>
 <div id="installBanner" style="display:none;position:fixed;bottom:34px;left:50%;transform:translateX(-50%);width:calc(100% - 32px);max-width:480px;background:#fff;border:2px solid #C7BA9C;border-radius:16px;padding:12px 14px;box-shadow:0 8px 24px rgba(26,37,41,.15);z-index:1000;display:flex;align-items:center;gap:10px;">
   <div style="flex:1;font-size:13px;font-weight:600;color:#26333B;" id="installBannerText">ثبّت أمي على شاشتك الرئيسية لفتحه بلمسة واحدة</div>
   <button id="installBannerBtn" style="height:38px;padding:0 16px;border-radius:10px;border:none;background:#1F6B63;color:#fff;font-size:13px;font-weight:700;cursor:pointer;flex-shrink:0;">تثبيت</button>
@@ -149,7 +149,7 @@ const state = {
   avgWpm: null, recordStartTs: null, readinessLevel: 0, completedLessonIds: new Set(), readinessTargetLevel: null,
   shareCode: null, notifEnabled: false, publicShare: null,
   needsLevel0: false, level0Index: 0, level0ViewIndex: 0, level0QuizLetters: [], level0QuizCorrect: '', level0QuizFeedback: '', level0WeakLetters: [], level0ReviewMode: false,
-  reviewLessonId: null,
+  reviewLessonId: null, assessStep: 1,
 };
 let deferredInstallPrompt = null;
 let mediaRecorder = null, audioChunks = [], mediaStream = null, fluencyTimer = null, playTimer = null;
@@ -291,7 +291,8 @@ async function loadProfile(userId) {
     state.level0Index = profile.level0_index || 0;
     state.level0WeakLetters = profile.level0_weak_letters || [];
     if (profile.track) { state.screen = state.needsLevel0 ? 'level0-map' : 'home'; }
-    else { state.screen = profile.placement_done ? 'test' : 'placement'; }
+    else if (!profile.placement_done) { state.screen = 'placement'; }
+    else { state.screen = 'track-quick'; }
     state.activeTab = 'home';
   }
 }
@@ -516,7 +517,7 @@ function screens() {
   const fs = FONT_SCALES[s.fontScaleIdx];
 
   const topTitles = { home:'أمي', lessons:'الدروس', scenarios:'مواقف من الحياة', profile:'حسابي', lesson: currentLesson.title, mimicry:'قلّد القراءة', fluency:'القراءة المستقلة', 'scenario-detail': currentScenario.title, readiness: 'تحقق الجاهزية', 'level0-map':'الأساس: الحروف', 'level0-letter':'تعلّم الحرف', 'level0-quiz':'تمرين سريع' };
-  const showTopBar = !['splash','test','track-suggest','auth-phone','auth-otp','public-share','placement','level0-complete'].includes(s.screen);
+  const showTopBar = !['splash','test','track-suggest','auth-phone','auth-otp','public-share','placement','level0-complete','assess-level','track-quick'].includes(s.screen);
   const showBack = ['lesson','mimicry','fluency','scenario-detail','readiness','level0-letter','level0-quiz'].includes(s.screen);
   const showBottomNav = ['home','lessons','scenarios','profile'].includes(s.screen);
 
@@ -652,6 +653,26 @@ function screens() {
       <button class="btn-primary" data-act="verifyotp" ${s.authLoading?'disabled':''} style="opacity:${s.authLoading?.6:1}">${s.authLoading?'جارٍ التحقق...':'تأكيد'}</button>
       <button data-act="backtophone" style="height:44px;border:none;background:transparent;color:#5E6C72;font-size:14px;font-weight:600;cursor:pointer;">تغيير البريد الإلكتروني</button>
     </div>`;
+  } else if (s.screen === 'assess-level') {
+    const sampleText = s.assessStep === 1 ? (LESSONS.find(l=>l.level===2)||LESSONS[0]).text : (LESSONS.find(l=>l.level===4)||LESSONS[0]).text;
+    content = `<div style="flex:1;display:flex;flex-direction:column;padding:32px 22px;gap:22px;justify-content:center;text-align:center;">
+      <div style="display:flex;gap:6px;justify-content:center;"><div class="step-dot" style="width:${s.assessStep===1?28:14}px;background:#1F6B63;"></div><div class="step-dot" style="width:${s.assessStep===2?28:14}px;background:${s.assessStep===2?'#1F6B63':'#E4D9C2'};"></div></div>
+      <div style="font-size:15px;font-weight:700;color:#26333B;">هل تستطيع قراءة هذه الجملة بسهولة؟</div>
+      <div class="card" style="border-radius:20px;"><div style="font-size:24px;font-weight:700;line-height:1.9;">${sampleText}</div></div>
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <button class="btn-primary" data-act="assesseasy">نعم، بسهولة</button>
+        <button class="btn-outline" data-act="assesshard">بصعوبة أو لا أستطيع</button>
+      </div>
+    </div>`;
+  } else if (s.screen === 'track-quick') {
+    content = `<div style="flex:1;display:flex;flex-direction:column;padding:32px 22px;gap:22px;justify-content:center;text-align:center;">
+      <div style="font-size:19px;font-weight:800;color:#17564D;">سؤال أخير</div>
+      <div style="font-size:15px;font-weight:700;color:#26333B;">هل العربية لغتك الأم، أو تتحدّث بها منذ الصغر؟</div>
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <button class="btn-primary" data-act="trackquickyes">نعم</button>
+        <button class="btn-outline" data-act="trackquickno">لا، أتعلّمها كلغة جديدة</button>
+      </div>
+    </div>`;
   } else if (s.screen === 'test') {
     content = `<div style="flex:1;display:flex;flex-direction:column;padding:28px 20px;gap:18px;">
       <div style="text-align:center;"><div style="font-size:20px;font-weight:800;color:#26333B;">اختر مسارك</div><div style="font-size:14px;color:#5E6C72;margin-top:6px;">اختر ما يناسبك للبدء</div></div>
@@ -749,6 +770,7 @@ function screens() {
       </div></div>
       <button data-act="logout" style="height:54px;border-radius:12px;border:2px solid #C7BA9C;background:#fff;color:#C0392B;font-size:15px;font-weight:700;cursor:pointer;">تسجيل الخروج</button>
       <button data-act="openlevel0map" style="height:54px;border-radius:12px;border:2px solid #C7BA9C;background:#fff;color:#1A2529;font-size:15px;font-weight:700;cursor:pointer;">مراجعة الحروف الهجائية</button>
+      <button data-act="retakeassessment" style="height:54px;border-radius:12px;border:2px solid #C7BA9C;background:#fff;color:#1A2529;font-size:15px;font-weight:700;cursor:pointer;">إعادة اختبار التموضع</button>
       <div class="card">
         <div style="font-size:14px;font-weight:700;margin-bottom:4px;">متابعة من الأهل</div>
         <div style="font-size:12px;color:#5E6C72;margin-bottom:12px;line-height:1.6;">شارك رابطًا للقراءة فقط يعرض تقدّمك لمن تحب.</div>
@@ -896,9 +918,23 @@ document.getElementById('app').addEventListener('click', async (e) => {
   else if (act==='placementeasy' || act==='placementhard' || act==='placementno') {
     state.needsLevel0 = act==='placementno';
     saveProfile({ placement_done: true, needs_level0: state.needsLevel0 });
-    state.screen='test';
+    state.screen = state.needsLevel0 ? 'track-quick' : 'assess-level';
+    state.assessStep = 1;
   }
+  else if (act==='assesseasy' || act==='assesshard') {
+    if (state.assessStep === 1) {
+      if (act==='assesseasy') { state.assessStep = 2; }
+      else { state.readinessLevel = 0; saveProfile({ readiness_level: 0 }); state.screen = 'track-quick'; }
+    } else {
+      state.readinessLevel = act==='assesseasy' ? 4 : 2;
+      saveProfile({ readiness_level: state.readinessLevel });
+      state.screen = 'track-quick';
+    }
+  }
+  else if (act==='trackquickyes') { state.track='elder'; state.highlightMode='letter'; saveProfile({track:'elder'}); state.screen = state.needsLevel0?'level0-map':'home'; state.activeTab='home'; }
+  else if (act==='trackquickno') { state.track='nonnative'; state.highlightMode='word'; saveProfile({track:'nonnative'}); state.screen = state.needsLevel0?'level0-map':'home'; state.activeTab='home'; }
   else if (act==='openlevel0map') { state.screen='level0-map'; }
+  else if (act==='retakeassessment') { state.assessStep=1; state.screen='placement'; }
   else if (act==='openlevel0letter') { state.level0ViewIndex=id; state.screen='level0-letter'; }
   else if (act==='level0playletter') { const L=LEVEL0_LETTERS[state.level0ViewIndex]; speakTextEL(L.name); return; }
   else if (act==='level0playword') { const L=LEVEL0_LETTERS[state.level0ViewIndex]; speakTextEL(L.word); return; }
