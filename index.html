@@ -4,9 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>أمي — مدرّب القراءة العربية بالصوت</title>
-<meta name="app-version" content="v1.6.0">
+<meta name="app-version" content="v1.7.0">
 <meta name="copyright" content="© 2026 مشروع أمي. جميع الحقوق محفوظة.">
-<!-- التحديثات v1.6.0: وضع بلا إنترنت (Service Worker)، إعادة تشغيل كلمة واحدة بالضغط، رابط متابعة تقدّم للأهل، تذكير يومي -->
+<!-- التحديثات v1.7.0: أيقونات مميّزة لكل موقف حياتي، تحسين بطاقات الرئيسية والمواقف بظلال وسهم اتجاه -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -36,7 +36,7 @@
 </head>
 <body>
 <div id="app"><div class="shell" id="shell"></div></div>
-<div style="position:fixed;bottom:6px;left:50%;transform:translateX(-50%);font-size:10px;color:#8A968C;background:#FAF5EA;padding:2px 10px;border-radius:8px;z-index:999;">© 2026 أمي — جميع الحقوق محفوظة · v1.6.0</div>
+<div style="position:fixed;bottom:6px;left:50%;transform:translateX(-50%);font-size:10px;color:#8A968C;background:#FAF5EA;padding:2px 10px;border-radius:8px;z-index:999;">© 2026 أمي — جميع الحقوق محفوظة · v1.7.0</div>
 
 <script>
 const SUPABASE_URL = 'https://thdsfpjmzownaajfxmcv.supabase.co';
@@ -412,6 +412,20 @@ function playSingleWord(item, mode, tokenIdx) {
   audio.addEventListener('timeupdate', stopAt);
 }
 
+function scenarioIcon(title) {
+  if (title.includes('دواء') || title.includes('طبي')) return '<path d="M12 21s-6-4-8.5-8C1.5 9 3 5.5 6.5 5.5c2 0 3 1.2 5.5 4 2.5-2.8 3.5-4 5.5-4C21 5.5 22.5 9 20.5 13c-2.5 4-8.5 8-8.5 8z" fill="none" stroke="CUR" stroke-width="1.6"/>';
+  if (title.includes('رسالة')) return '<path d="M4 6h16v12H4z" stroke="CUR" stroke-width="1.6" fill="none"/><path d="M4 7l8 6 8-6" stroke="CUR" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>';
+  if (title.includes('لافتة')) return '<circle cx="12" cy="12" r="9" stroke="CUR" stroke-width="1.6" fill="none"/><path d="M8 8l8 8M16 8l-8 8" stroke="CUR" stroke-width="1.6"/>';
+  if (title.includes('طعام')) return '<path d="M6 3v8M9 3v8M6 7h3M7.5 11v10" stroke="CUR" stroke-width="1.6" fill="none" stroke-linecap="round"/><path d="M16 3c0 4-2 5-2 8s1 3 1 3v7" stroke="CUR" stroke-width="1.6" fill="none" stroke-linecap="round"/>';
+  if (title.includes('بنك') || title.includes('فاتورة')) return '<rect x="4" y="10" width="16" height="9" rx="1" stroke="CUR" stroke-width="1.6" fill="none"/><path d="M4 10l8-6 8 6" stroke="CUR" stroke-width="1.6" fill="none" stroke-linejoin="round"/>';
+  if (title.includes('مصعد') || title.includes('ضغط')) return '<circle cx="12" cy="13" r="7" stroke="CUR" stroke-width="1.6" fill="none"/><path d="M12 13l3-4" stroke="CUR" stroke-width="1.6" stroke-linecap="round"/><path d="M9 3h6" stroke="CUR" stroke-width="1.6" stroke-linecap="round"/>';
+  if (title.includes('مسجد')) return '<path d="M4 20V11l8-6 8 6v9" stroke="CUR" stroke-width="1.6" fill="none" stroke-linejoin="round"/><circle cx="12" cy="4" r="1.2" fill="CUR"/><path d="M9 20v-5a3 3 0 016 0v5" stroke="CUR" stroke-width="1.6" fill="none"/>';
+  if (title.includes('حافلة')) return '<rect x="3" y="7" width="18" height="10" rx="2" stroke="CUR" stroke-width="1.6" fill="none"/><circle cx="7.5" cy="17" r="1.5" fill="CUR"/><circle cx="16.5" cy="17" r="1.5" fill="CUR"/>';
+  if (title.includes('موعد') || title.includes('طبيب')) return '<circle cx="12" cy="12" r="9" stroke="CUR" stroke-width="1.6" fill="none"/><path d="M12 7v5l3 3" stroke="CUR" stroke-width="1.6" fill="none" stroke-linecap="round"/>';
+  if (title.includes('مصعد')) return '<rect x="7" y="3" width="10" height="18" rx="2" stroke="CUR" stroke-width="1.6" fill="none"/>';
+  return '<rect x="4" y="4" width="16" height="16" rx="3" stroke="CUR" stroke-width="1.6" fill="none"/><path d="M8 9h8M8 13h5" stroke="CUR" stroke-width="1.6" stroke-linecap="round"/>';
+}
+
 function screens() {
   const s = state;
   const track = s.track || 'elder';
@@ -502,10 +516,13 @@ function screens() {
         <button class="btn-outline" data-act="openmimicry" data-id="${currentLesson.id}" style="height:auto;padding:16px 10px;">تقليد الصوت</button>
         <button class="btn-outline" data-act="gofluency" style="height:auto;padding:16px 10px;">قراءة مستقلة</button>
       </div>
-      <button data-act="goscenarios" style="background:${trackDef.accentSoft};border:none;border-radius:16px;padding:16px;text-align:right;cursor:pointer;font-size:14px;font-weight:700;color:#26333B;">مواقف من الحياة اليومية</button>
+      <button data-act="goscenarios" style="background:${trackDef.accentSoft};border:none;border-radius:16px;padding:16px;display:flex;align-items:center;gap:12px;cursor:pointer;text-align:right;box-shadow:0 2px 6px rgba(26,37,41,.05);">
+        <div style="width:42px;height:42px;border-radius:12px;background:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;">${icon('<path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="'+trackDef.accent+'" stroke-width="1.6" fill="none" stroke-linejoin="round"/>',22)}</div>
+        <div style="flex:1;"><div style="font-size:14px;font-weight:700;color:#26333B;">مواقف من الحياة اليومية</div><div style="font-size:12px;color:#5E6C72;margin-top:2px;">طبّق ما تعلمته على مواقف حقيقية</div></div>
+      </button>
       <div style="font-size:14px;font-weight:700;color:#26333B;">دروس مقترحة لك</div>
       <div style="display:flex;flex-direction:column;gap:10px;">
-        ${LESSONS.slice(1,4).map(l=>`<button data-act="openlesson" data-id="${l.id}" style="background:#fff;border:1px solid #E4D9C2;border-radius:14px;padding:12px 14px;display:flex;align-items:center;gap:12px;text-align:right;cursor:pointer;"><div style="width:34px;height:34px;border-radius:10px;background:#F1EAD9;display:flex;align-items:center;justify-content:center;font-weight:700;">${l.num}</div><div style="flex:1;font-size:14px;font-weight:600;">${l.title}</div></button>`).join('')}
+        ${LESSONS.slice(1,4).map(l=>`<button data-act="openlesson" data-id="${l.id}" style="background:#fff;border:2px solid #C7BA9C;border-radius:14px;padding:12px 14px;display:flex;align-items:center;gap:12px;text-align:right;cursor:pointer;box-shadow:0 2px 6px rgba(26,37,41,.05);"><div style="width:34px;height:34px;border-radius:10px;background:#F1EAD9;display:flex;align-items:center;justify-content:center;font-weight:700;">${l.num}</div><div style="flex:1;font-size:14px;font-weight:600;">${l.title}</div>${icon('<path d="M7 4l7 6-7 6" stroke="#8A968C" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>',16)}</button>`).join('')}
       </div>
     </div>`;
   } else if (s.screen === 'lessons') {
@@ -544,7 +561,7 @@ function screens() {
     content = `<div style="flex:1;display:flex;flex-direction:column;padding:20px 18px;gap:14px;">
       <div style="font-size:13px;color:#5E6C72;">تدرّب على قراءة مواقف تواجهها كل يوم</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-        ${SCENARIOS.map(sc=>`<button data-act="openscenario" data-id="${sc.id}" style="background:#fff;border:1px solid #E4D9C2;border-radius:16px;padding:14px;text-align:center;cursor:pointer;min-height:100px;"><div style="font-size:13px;font-weight:700;line-height:1.4;">${sc.title}</div></button>`).join('')}
+        ${SCENARIOS.map(sc=>`<button data-act="openscenario" data-id="${sc.id}" style="background:#fff;border:2px solid #C7BA9C;border-radius:16px;padding:16px 14px;display:flex;flex-direction:column;align-items:center;gap:10px;cursor:pointer;min-height:110px;box-shadow:0 2px 6px rgba(26,37,41,.05);"><div style="width:44px;height:44px;border-radius:12px;background:${trackDef.accentSoft};display:flex;align-items:center;justify-content:center;">${icon(scenarioIcon(sc.title).replaceAll('CUR', trackDef.accent), 22)}</div><div style="font-size:13px;font-weight:700;line-height:1.4;">${sc.title}</div></button>`).join('')}
       </div>
     </div>`;
   } else if (s.screen === 'profile') {
