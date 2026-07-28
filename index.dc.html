@@ -7,10 +7,14 @@
 </head>
 <body>
 <x-dc>
+<template id="__bundler_thumbnail">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200"><rect width="200" height="200" fill="#1F6B63"/><text x="100" y="115" font-size="70" text-anchor="middle" fill="#fff" font-family="sans-serif">أ</text></svg>
+</template>
 <helmet data-dc-atomics>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="./image-slot.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <style>
 body{margin:0;background:#EDE7D8;font-family:'Cairo',system-ui,sans-serif}
 a{color:#1F6B63}
@@ -20,9 +24,8 @@ a:hover{color:#144A44}
 </style>
 </helmet>
 
-<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:36px;box-sizing:border-box;" dir="rtl">
-<x-import component-from-global-scope="AndroidDevice" from="./android-frame.jsx" hint-size="412px,892px">
-<div style="width:100%;height:100%;display:flex;flex-direction:column;background:#FAF5EA;overflow:hidden;font-family:'Cairo',system-ui,sans-serif;" dir="rtl">
+<div style="min-height:100vh;background:#EDE7D8;display:flex;justify-content:center;box-sizing:border-box;" dir="rtl">
+<div style="width:100%;max-width:520px;min-height:100vh;display:flex;flex-direction:column;background:#FAF5EA;font-family:'Cairo',system-ui,sans-serif;box-shadow:0 0 40px rgba(0,0,0,0.06);" dir="rtl">
 
 <sc-if value="{{ showTopBar }}" hint-placeholder-val="{{ true }}">
 <div style="display:flex;align-items:center;gap:10px;padding:10px 16px;background:#FAF5EA;border-bottom:1px solid #E4D9C2;flex-shrink:0;">
@@ -57,6 +60,35 @@ a:hover{color:#144A44}
 </div>
 <button onClick="{{ goStartTest }}" style="width:100%;max-width:280px;height:58px;border-radius:16px;border:none;background:#1F6B63;color:#fff;font-size:18px;font-weight:700;cursor:pointer;margin-top:8px;">ابدأ الآن</button>
 <div style="font-size:13px;color:#8A968C;">دقيقتان فقط لتحديد أفضل بداية لك</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isAuthPhone }}" hint-placeholder-val="{{ false }}">
+<div style="flex:1;display:flex;flex-direction:column;padding:28px 22px;gap:20px;justify-content:center;">
+<div style="text-align:center;">
+<div style="font-size:20px;font-weight:800;color:#26333B;">أدخل بريدك الإلكتروني</div>
+<div style="font-size:14px;color:#5E6C72;margin-top:8px;line-height:1.6;">لحفظ تقدّمك والوصول إليه من أي جهاز</div>
+</div>
+<input type="email" dir="ltr" placeholder="name@example.com" value="{{ email }}" onChange="{{ handleEmailChange }}" style="height:58px;border-radius:14px;border:1px solid #E4D9C2;background:#fff;font-size:18px;text-align:center;color:#26333B;font-family:'Cairo',sans-serif;" />
+<sc-if value="{{ authError }}" hint-placeholder-val="{{ false }}">
+<div style="font-size:13px;color:#C0392B;text-align:center;">{{ authError }}</div>
+</sc-if>
+<button onClick="{{ sendOtp }}" disabled="{{ authLoading }}" style="height:58px;border-radius:16px;border:none;background:#1F6B63;color:#fff;font-size:17px;font-weight:700;cursor:pointer;opacity:{{ authLoadingOpacity }};">{{ sendOtpLabel }}</button>
+</div>
+</sc-if>
+
+<sc-if value="{{ isAuthOtp }}" hint-placeholder-val="{{ false }}">
+<div style="flex:1;display:flex;flex-direction:column;padding:28px 22px;gap:20px;justify-content:center;">
+<div style="text-align:center;">
+<div style="font-size:20px;font-weight:800;color:#26333B;">أدخل رمز التحقق</div>
+<div style="font-size:14px;color:#5E6C72;margin-top:8px;">أرسلنا رمزًا مكوّنًا من 6 أرقام إلى {{ email }}</div>
+</div>
+<input type="tel" dir="ltr" placeholder="000000" value="{{ otpCode }}" onChange="{{ handleOtpChange }}" style="height:58px;border-radius:14px;border:1px solid #E4D9C2;background:#fff;font-size:24px;letter-spacing:6px;text-align:center;color:#26333B;font-family:'Cairo',sans-serif;" />
+<sc-if value="{{ authError }}" hint-placeholder-val="{{ false }}">
+<div style="font-size:13px;color:#C0392B;text-align:center;">{{ authError }}</div>
+</sc-if>
+<button onClick="{{ verifyOtp }}" disabled="{{ authLoading }}" style="height:58px;border-radius:16px;border:none;background:#1F6B63;color:#fff;font-size:17px;font-weight:700;cursor:pointer;opacity:{{ authLoadingOpacity }};">{{ verifyOtpLabel }}</button>
+<button onClick="{{ backToPhone }}" style="height:44px;border-radius:14px;border:none;background:transparent;color:#5E6C72;font-size:14px;font-weight:600;cursor:pointer;">تغيير رقم الجوال</button>
 </div>
 </sc-if>
 
@@ -331,6 +363,10 @@ a:hover{color:#144A44}
 <div style="font-size:14px;color:#5E6C72;">...جارٍ التسجيل</div>
 </sc-if>
 
+<sc-if value="{{ micError }}" hint-placeholder-val="{{ false }}">
+<div style="font-size:13px;color:#C0392B;text-align:center;">{{ micError }}</div>
+</sc-if>
+
 <sc-if value="{{ mimicry_recorded }}" hint-placeholder-val="{{ false }}">
 <div style="width:72px;height:72px;border-radius:50%;background:#3F8F5F;display:flex;align-items:center;justify-content:center;">
 <svg width="30" height="30" viewBox="0 0 24 24"><path d="M5 12l5 5L19 7" stroke="#fff" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -416,7 +452,6 @@ a:hover{color:#144A44}
 </sc-if>
 
 </div>
-</x-import>
 </div>
 </x-dc>
 <script type="text/x-dc" data-dc-script>
@@ -442,6 +477,9 @@ const TRACKS = {
 
 const FONT_SCALES = [0.85, 1, 1.2];
 
+const SUPABASE_URL = 'https://thdsfpjmzownaajfxmcv.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_ExsuZ-0hxNTFlz8AxHaozQ_Zxc_1bv-';
+
 class Component extends DCLogic {
   state = {
     screen: 'splash',
@@ -458,15 +496,117 @@ class Component extends DCLogic {
     fluencyElapsed: 0,
     activeScenarioId: 1,
     lastScreen: 'home',
+    email: '',
+    otpCode: '',
+    authError: '',
+    authLoading: false,
+    myRecordingUrl: null,
+    micError: '',
   };
 
   _playTimer = null;
   _testTimeouts = [];
   _mimTimeout = null;
   _fluencyTimer = null;
+  _sb = null;
+  _userId = null;
+
+  async componentDidMount() {
+    try {
+      this._sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      const { data: { session } } = await this._sb.auth.getSession();
+      if (session) {
+        await this._loadProfileAndEnter(session.user.id);
+      }
+    } catch (e) {
+      console.warn('Supabase init failed, continuing offline', e);
+    }
+  }
+
+  async _loadProfileAndEnter(userId) {
+    this._userId = userId;
+    let { data: profile } = await this._sb.from('profiles').select('*').eq('id', userId).maybeSingle();
+    if (!profile) {
+      const { data: created } = await this._sb.from('profiles').insert({ id: userId }).select().maybeSingle();
+      profile = created;
+    }
+    if (profile) {
+      const idx = FONT_SCALES.indexOf(Number(profile.font_scale));
+      this.setState({
+        track: profile.track || null,
+        fontScaleIdx: idx >= 0 ? idx : 1,
+        screen: profile.track ? 'home' : 'test',
+        activeTab: 'home',
+      });
+    }
+  }
+
+  handleEmailChange = (e) => this.setState({ email: e.target.value, authError: '' });
+  handleOtpChange = (e) => this.setState({ otpCode: e.target.value, authError: '' });
+
+  sendOtp = async () => {
+    const email = (this.state.email || '').trim();
+    if (!email || !email.includes('@')) { this.setState({ authError: 'أدخل بريدًا إلكترونيًا صحيحًا' }); return; }
+    this.setState({ authLoading: true, authError: '' });
+    try {
+      const { error } = await this._sb.auth.signInWithOtp({ email });
+      if (error) { this.setState({ authLoading: false, authError: 'تعذّر إرسال الرمز، حاول مجددًا' }); return; }
+      this.setState({ authLoading: false, screen: 'auth-otp', email });
+    } catch (e) {
+      this.setState({ authLoading: false, authError: 'تعذّر الاتصال، تحقق من الإنترنت' });
+    }
+  };
+
+  verifyOtp = async () => {
+    if (!this.state.otpCode || this.state.otpCode.length < 4) { this.setState({ authError: 'أدخل الرمز كاملًا' }); return; }
+    this.setState({ authLoading: true, authError: '' });
+    try {
+      const { data, error } = await this._sb.auth.verifyOtp({ email: this.state.email, token: this.state.otpCode, type: 'email' });
+      if (error) { this.setState({ authLoading: false, authError: 'الرمز غير صحيح، حاول مجددًا' }); return; }
+      this.setState({ authLoading: false, otpCode: '' });
+      await this._loadProfileAndEnter(data.session.user.id);
+    } catch (e) {
+      this.setState({ authLoading: false, authError: 'تعذّر التحقق، حاول مجددًا' });
+    }
+  };
+
+  backToPhone = () => this.setState({ screen: 'auth-phone', otpCode: '', authError: '' });
+
+  async _saveProfile(fields) {
+    if (!this._sb || !this._userId) return;
+    try { await this._sb.from('profiles').update({ ...fields, updated_at: new Date().toISOString() }).eq('id', this._userId); }
+    catch (e) { console.warn('profile save failed', e); }
+  }
+
+  async _logActivity() {
+    if (!this._sb || !this._userId) return;
+    try {
+      const today = new Date().toISOString().slice(0, 10);
+      const { data: existing } = await this._sb.from('daily_activity').select('*').eq('user_id', this._userId).eq('activity_date', today).maybeSingle();
+      if (existing) {
+        await this._sb.from('daily_activity').update({ lessons_practiced: existing.lessons_practiced + 1 }).eq('id', existing.id);
+      } else {
+        await this._sb.from('daily_activity').insert({ user_id: this._userId, activity_date: today, lessons_practiced: 1 });
+        this.setState(s => ({ }));
+        await this._saveProfile({ last_active_date: today });
+      }
+    } catch (e) { console.warn('activity log failed', e); }
+  }
+
+  async _saveLessonProgress(lessonId, status) {
+    if (!this._sb || !this._userId) return;
+    try {
+      await this._sb.from('lesson_progress').upsert({
+        user_id: this._userId, lesson_id: lessonId, status,
+        attempts: 1, last_attempt_at: new Date().toISOString(),
+        completed_at: status === 'completed' ? new Date().toISOString() : null,
+      }, { onConflict: 'user_id,lesson_id' });
+    } catch (e) { console.warn('progress save failed', e); }
+  }
 
   componentWillUnmount() {
     this._clearAll();
+    if (this._mediaStream) this._mediaStream.getTracks().forEach(t => t.stop());
   }
 
   _clearAll() {
@@ -477,7 +617,7 @@ class Component extends DCLogic {
     this._testTimeouts = [];
   }
 
-  goStartTest = () => this.setState({ screen: 'test', testStage: 'intro' });
+  goStartTest = () => this.setState({ screen: 'auth-phone', testStage: 'intro' });
 
   startTestRecording = () => this.setState({ testStage: 'recording' });
 
@@ -492,10 +632,11 @@ class Component extends DCLogic {
   _selectTrack(track) {
     this._clearAll();
     this.setState({ track, screen: 'home', activeTab: 'home', highlightMode: track === 'elder' ? 'letter' : 'word' });
+    this._saveProfile({ track });
   }
 
-  setElderTrack = () => this.setState({ track: 'elder' });
-  setNonnativeTrack = () => this.setState({ track: 'nonnative' });
+  setElderTrack = () => { this.setState({ track: 'elder' }); this._saveProfile({ track: 'elder' }); };
+  setNonnativeTrack = () => { this.setState({ track: 'nonnative' }); this._saveProfile({ track: 'nonnative' }); };
 
   goHomeTab = () => { this._clearAll(); this.setState({ screen: 'home', activeTab: 'home', playing: false, tokenIndex: -1 }); };
   goLessonsTab = () => this.setState({ screen: 'lessons', activeTab: 'lessons' });
@@ -573,24 +714,83 @@ class Component extends DCLogic {
     this.setState({ playing: false, tokenIndex: -1 });
   };
 
-  startMimicryRecording = () => {
-    this.setState({ mimicryStage: 'recording' });
-    this._mimTimeout = setTimeout(() => this.setState({ mimicryStage: 'recorded' }), 1800);
-  };
-  resetMimicry = () => this.setState({ mimicryStage: 'idle' });
-  finishMimicry = () => this.setState({ screen: 'lesson', mimicryStage: 'idle' });
-  playModel = () => {};
-  playMine = () => {};
+  async _startRealRecording() {
+    this._audioChunks = [];
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      this._mediaStream = stream;
+      const recorder = new MediaRecorder(stream);
+      this._mediaRecorder = recorder;
+      recorder.ondataavailable = (e) => { if (e.data.size > 0) this._audioChunks.push(e.data); };
+      recorder.start();
+      this.setState({ micError: '' });
+      return true;
+    } catch (e) {
+      console.warn('mic access failed', e);
+      this.setState({ micError: 'تعذّر الوصول للميكروفون' });
+      return false;
+    }
+  }
 
-  startFluencyReading = () => {
+  _stopRealRecordingAndSave(kind, lessonId) {
+    return new Promise((resolve) => {
+      const recorder = this._mediaRecorder;
+      if (!recorder || recorder.state === 'inactive') { resolve(null); return; }
+      recorder.onstop = async () => {
+        const blob = new Blob(this._audioChunks, { type: 'audio/webm' });
+        if (this._mediaStream) this._mediaStream.getTracks().forEach(t => t.stop());
+        const localUrl = URL.createObjectURL(blob);
+        this.setState({ myRecordingUrl: localUrl });
+        this._uploadRecording(blob, kind, lessonId);
+        resolve(localUrl);
+      };
+      recorder.stop();
+    });
+  }
+
+  async _uploadRecording(blob, kind, lessonId) {
+    if (!this._sb || !this._userId) return;
+    try {
+      const path = `${this._userId}/${kind}_${Date.now()}.webm`;
+      const { error: upErr } = await this._sb.storage.from('recordings').upload(path, blob, { contentType: 'audio/webm' });
+      if (upErr) { console.warn('upload failed', upErr); return; }
+      await this._sb.from('recordings').insert({
+        user_id: this._userId, kind, lesson_id: kind === 'mimicry' ? lessonId : null,
+        audio_url: path,
+      });
+    } catch (e) { console.warn('recording save failed', e); }
+  }
+
+  startMimicryRecording = async () => {
+    this.setState({ mimicryStage: 'recording' });
+    const ok = await this._startRealRecording();
+    if (!ok) { this.setState({ mimicryStage: 'recorded' }); return; }
+    this._mimTimeout = setTimeout(async () => {
+      await this._stopRealRecordingAndSave('mimicry', this.state.currentLessonId);
+      this.setState({ mimicryStage: 'recorded' });
+    }, 3000);
+  };
+  resetMimicry = () => this.setState({ mimicryStage: 'idle', myRecordingUrl: null });
+  finishMimicry = () => {
+    this.setState({ screen: 'lesson', mimicryStage: 'idle' });
+    this._saveLessonProgress(this.state.currentLessonId, 'completed');
+    this._logActivity();
+  };
+  playModel = () => {};
+  playMine = () => { if (this.state.myRecordingUrl) new Audio(this.state.myRecordingUrl).play(); };
+
+  startFluencyReading = async () => {
     this.setState({ fluencyStage: 'reading', fluencyElapsed: 0 });
+    await this._startRealRecording();
     this._fluencyTimer = setInterval(() => {
       this.setState(s => ({ fluencyElapsed: s.fluencyElapsed + 1 }));
     }, 1000);
   };
-  finishFluencyReading = () => {
+  finishFluencyReading = async () => {
     if (this._fluencyTimer) clearInterval(this._fluencyTimer);
+    await this._stopRealRecordingAndSave('fluency', null);
     this.setState({ fluencyStage: 'done' });
+    this._logActivity();
   };
 
   openScenarioById = (id) => {
@@ -598,9 +798,9 @@ class Component extends DCLogic {
     this.setState({ screen: 'scenario-detail', activeScenarioId: id, playing: false, tokenIndex: -1 });
   };
 
-  decreaseFont = () => this.setState(s => ({ fontScaleIdx: Math.max(0, s.fontScaleIdx - 1) }));
-  increaseFont = () => this.setState(s => ({ fontScaleIdx: Math.min(FONT_SCALES.length - 1, s.fontScaleIdx + 1) }));
-  _setFontIdx = (idx) => this.setState({ fontScaleIdx: idx });
+  decreaseFont = () => this.setState(s => { const idx = Math.max(0, s.fontScaleIdx - 1); this._saveProfile({ font_scale: FONT_SCALES[idx] }); return { fontScaleIdx: idx }; });
+  increaseFont = () => this.setState(s => { const idx = Math.min(FONT_SCALES.length - 1, s.fontScaleIdx + 1); this._saveProfile({ font_scale: FONT_SCALES[idx] }); return { fontScaleIdx: idx }; });
+  _setFontIdx = (idx) => { this.setState({ fontScaleIdx: idx }); this._saveProfile({ font_scale: FONT_SCALES[idx] }); };
 
   renderVals() {
     const s = this.state;
@@ -670,12 +870,20 @@ class Component extends DCLogic {
     }));
 
     return {
-      showTopBar: s.screen !== 'splash' && s.screen !== 'test' && s.screen !== 'track-suggest',
+      showTopBar: !['splash', 'test', 'track-suggest', 'auth-phone', 'auth-otp'].includes(s.screen),
       showBack: ['lesson', 'mimicry', 'fluency', 'scenario-detail'].includes(s.screen),
       topTitle: screenTitles[s.screen] || 'أمي',
       goBack: this.goBack, decreaseFont: this.decreaseFont, increaseFont: this.increaseFont,
 
       isSplash: s.screen === 'splash', goStartTest: this.goStartTest,
+
+      isAuthPhone: s.screen === 'auth-phone', isAuthOtp: s.screen === 'auth-otp',
+      email: s.email, otpCode: s.otpCode, authError: s.authError,
+      authLoading: s.authLoading, authLoadingOpacity: s.authLoading ? 0.6 : 1,
+      sendOtpLabel: s.authLoading ? 'جارٍ الإرسال...' : 'إرسال الرمز',
+      verifyOtpLabel: s.authLoading ? 'جارٍ التحقق...' : 'تأكيد',
+      handleEmailChange: this.handleEmailChange, handleOtpChange: this.handleOtpChange,
+      sendOtp: this.sendOtp, verifyOtp: this.verifyOtp, backToPhone: this.backToPhone,
 
       isTest: s.screen === 'test',
       testStage_intro: s.testStage === 'intro',
@@ -711,7 +919,7 @@ class Component extends DCLogic {
       letterModeStyle: segBtn(mode === 'letter'), wordModeStyle: segBtn(mode === 'word'),
       togglePlay: this.togglePlay, resetPlayback: this.resetPlayback,
 
-      isMimicry: s.screen === 'mimicry',
+      isMimicry: s.screen === 'mimicry', micError: s.micError,
       mimicry_idle: s.mimicryStage === 'idle', mimicry_recording: s.mimicryStage === 'recording', mimicry_recorded: s.mimicryStage === 'recorded',
       startMimicryRecording: this.startMimicryRecording, resetMimicry: this.resetMimicry, finishMimicry: this.finishMimicry,
       playModel: this.playModel, playMine: this.playMine,
