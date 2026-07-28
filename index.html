@@ -4,9 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>أمي — مدرّب القراءة العربية بالصوت</title>
-<meta name="app-version" content="v2.3.1">
+<meta name="app-version" content="v2.4.0">
 <meta name="copyright" content="© 2026 مشروع أمي. جميع الحقوق محفوظة.">
-<!-- التحديثات v2.3.1: إصلاح زر التثبيت (كان يفوت حدث beforeinstallprompt أحيانًا)، رسالة تعليمات بديلة إن تعذّر التثبيت التلقائي -->
+<!-- التحديثات v2.4.0: تصحيح أشكال الحروف علميًا (رموز يونيكود الأشكال الرسمية بدل الشرطات التقريبية)، إتقان كل حرف يتطلب إجابتين صحيحتين متتاليتين، تمرين ثانٍ متنوع (كلمة تبدأ بالحرف) إلى جانب تمرين الصوت، تكرار نطق الحرف تلقائيًا مرتين -->
 <link rel="manifest" href="./manifest.json">
 <meta name="theme-color" content="#1F6B63">
 <link rel="apple-touch-icon" href="./icon-192.png">
@@ -39,7 +39,7 @@
 </head>
 <body>
 <div id="app"><div class="shell" id="shell"></div></div>
-<div style="position:fixed;bottom:6px;left:50%;transform:translateX(-50%);font-size:10px;color:#8A968C;background:#FAF5EA;padding:2px 10px;border-radius:8px;z-index:999;">© 2026 أمي — جميع الحقوق محفوظة · v2.3.1</div>
+<div style="position:fixed;bottom:6px;left:50%;transform:translateX(-50%);font-size:10px;color:#8A968C;background:#FAF5EA;padding:2px 10px;border-radius:8px;z-index:999;">© 2026 أمي — جميع الحقوق محفوظة · v2.4.0</div>
 <div id="installBanner" style="display:none;position:fixed;bottom:34px;left:50%;transform:translateX(-50%);width:calc(100% - 32px);max-width:480px;background:#fff;border:2px solid #C7BA9C;border-radius:16px;padding:12px 14px;box-shadow:0 8px 24px rgba(26,37,41,.15);z-index:1000;display:flex;align-items:center;gap:10px;">
   <div style="flex:1;font-size:13px;font-weight:600;color:#26333B;" id="installBannerText">ثبّت أمي على شاشتك الرئيسية لفتحه بلمسة واحدة</div>
   <button id="installBannerBtn" style="height:38px;padding:0 16px;border-radius:10px;border:none;background:#1F6B63;color:#fff;font-size:13px;font-weight:700;cursor:pointer;flex-shrink:0;">تثبيت</button>
@@ -89,36 +89,37 @@ const FALLBACK_SCENARIOS = [
 ];
 const ARABIC_NUMS = ['٠','١','٢','٣','٤','٥','٦','٧','٨','٩'];
 const LEVEL0_RAW = [
-  ['ا','ألف','ا','ا','ـا','ـا','أب'],
-  ['ب','باء','ب','بـ','ـبـ','ـب','باب'],
-  ['ت','تاء','ت','تـ','ـتـ','ـت','تمر'],
-  ['ث','ثاء','ث','ثـ','ـثـ','ـث','ثوب'],
-  ['ج','جيم','ج','جـ','ـجـ','ـج','جبل'],
-  ['ح','حاء','ح','حـ','ـحـ','ـح','حليب'],
-  ['خ','خاء','خ','خـ','ـخـ','ـخ','خبز'],
-  ['د','دال','د','د','ـد','ـد','دواء'],
-  ['ذ','ذال','ذ','ذ','ـذ','ـذ','ذهب'],
-  ['ر','راء','ر','ر','ـر','ـر','رجل'],
-  ['ز','زاي','ز','ز','ـز','ـز','زيت'],
-  ['س','سين','س','سـ','ـسـ','ـس','سوق'],
-  ['ش','شين','ش','شـ','ـشـ','ـش','شاي'],
-  ['ص','صاد','ص','صـ','ـصـ','ـص','صلاة'],
-  ['ض','ضاد','ض','ضـ','ـضـ','ـض','ضيف'],
-  ['ط','طاء','ط','طـ','ـطـ','ـط','طبيب'],
-  ['ظ','ظاء','ظ','ظـ','ـظـ','ـظ','ظل'],
-  ['ع','عين','ع','عـ','ـعـ','ـع','عصير'],
-  ['غ','غين','غ','غـ','ـغـ','ـغ','غداء'],
-  ['ف','فاء','ف','فـ','ـفـ','ـف','فجر'],
-  ['ق','قاف','ق','قـ','ـقـ','ـق','قلم'],
-  ['ك','كاف','ك','كـ','ـكـ','ـك','كتاب'],
-  ['ل','لام','ل','لـ','ـلـ','ـل','لحم'],
-  ['م','ميم','م','مـ','ـمـ','ـم','ماء'],
-  ['ن','نون','ن','نـ','ـنـ','ـن','نور'],
-  ['ه','هاء','ه','هـ','ـهـ','ـه','هدية'],
-  ['و','واو','و','و','ـو','ـو','وقت'],
-  ['ي','ياء','ي','يـ','ـيـ','ـي','يد'],
+  ['ا','ألف','ا','ا','\uFE8E','\uFE8E','أب'],
+  ['ب','باء','ب','\uFE91','\uFE92','\uFE90','باب'],
+  ['ت','تاء','ت','\uFE97','\uFE98','\uFE96','تمر'],
+  ['ث','ثاء','ث','\uFE9B','\uFE9C','\uFE9A','ثوب'],
+  ['ج','جيم','ج','\uFE9F','\uFEA0','\uFE9E','جبل'],
+  ['ح','حاء','ح','\uFEA3','\uFEA4','\uFEA2','حليب'],
+  ['خ','خاء','خ','\uFEA7','\uFEA8','\uFEA6','خبز'],
+  ['د','دال','د','د','\uFEAA','\uFEAA','دواء'],
+  ['ذ','ذال','ذ','ذ','\uFEAC','\uFEAC','ذهب'],
+  ['ر','راء','ر','ر','\uFEAE','\uFEAE','رجل'],
+  ['ز','زاي','ز','ز','\uFEB0','\uFEB0','زيت'],
+  ['س','سين','س','\uFEB3','\uFEB4','\uFEB2','سوق'],
+  ['ش','شين','ش','\uFEB7','\uFEB8','\uFEB6','شاي'],
+  ['ص','صاد','ص','\uFEBB','\uFEBC','\uFEBA','صلاة'],
+  ['ض','ضاد','ض','\uFEBF','\uFEC0','\uFEBE','ضيف'],
+  ['ط','طاء','ط','\uFEC3','\uFEC4','\uFEC2','طبيب'],
+  ['ظ','ظاء','ظ','\uFEC7','\uFEC8','\uFEC6','ظل'],
+  ['ع','عين','ع','\uFECB','\uFECC','\uFECA','عصير'],
+  ['غ','غين','غ','\uFECF','\uFED0','\uFECE','غداء'],
+  ['ف','فاء','ف','\uFED3','\uFED4','\uFED2','فجر'],
+  ['ق','قاف','ق','\uFED7','\uFED8','\uFED6','قلم'],
+  ['ك','كاف','ك','\uFEDB','\uFEDC','\uFEDA','كتاب'],
+  ['ل','لام','ل','\uFEDF','\uFEE0','\uFEDE','لحم'],
+  ['م','ميم','م','\uFEE3','\uFEE4','\uFEE2','ماء'],
+  ['ن','نون','ن','\uFEE7','\uFEE8','\uFEE6','نور'],
+  ['ه','هاء','ه','\uFEEB','\uFEEC','\uFEEA','هدية'],
+  ['و','واو','و','و','\uFEEE','\uFEEE','وقت'],
+  ['ي','ياء','ي','\uFEF1','\uFEF2','\uFEF0','يد'],
 ];
-const LEVEL0_LETTERS = LEVEL0_RAW.map(([c,name,iso,init,med,fin,word]) => ({c,name,iso,init,med,fin,word}));
+function unesc(s) { return s.replace(/\\u[0-9A-Fa-f]{4}/g, m => String.fromCharCode(parseInt(m.slice(2),16))); }
+const LEVEL0_LETTERS = LEVEL0_RAW.map(([c,name,iso,init,med,fin,word]) => ({c, name, iso: unesc(iso), init: unesc(init), med: unesc(med), fin: unesc(fin), word}));
 function toArabicNum(n) { return String(n).split('').map(d => ARABIC_NUMS[+d] ?? d).join(''); }
 let LESSONS = FALLBACK_LESSONS.slice();
 let SCENARIOS = FALLBACK_SCENARIOS.slice();
@@ -148,7 +149,7 @@ const state = {
   streak: 0, completedCount: 0, totalLessons: 0, recordingsCount: 0, recentRecordings: [],
   avgWpm: null, recordStartTs: null, readinessLevel: 0, completedLessonIds: new Set(), readinessTargetLevel: null,
   shareCode: null, notifEnabled: false, publicShare: null,
-  needsLevel0: false, level0Index: 0, level0ViewIndex: 0, level0QuizLetters: [], level0QuizCorrect: '', level0QuizFeedback: '', level0WeakLetters: [], level0ReviewMode: false,
+  needsLevel0: false, level0Index: 0, level0ViewIndex: 0, level0QuizLetters: [], level0QuizWords: [], level0QuizCorrect: '', level0QuizFeedback: '', level0WeakLetters: [], level0ReviewMode: false, level0ExerciseType: 'sound', level0MasteryCount: 0,
   reviewLessonId: null, assessStep: 1,
 };
 let deferredInstallPrompt = null;
@@ -518,6 +519,53 @@ function scenarioIcon(title) {
   return '<rect x="4" y="4" width="16" height="16" rx="3" stroke="CUR" stroke-width="1.6" fill="none"/><path d="M8 9h8M8 13h5" stroke="CUR" stroke-width="1.6" stroke-linecap="round"/>';
 }
 
+function level0PrepareQuiz(idx, review) {
+  const correct = LEVEL0_LETTERS[idx];
+  state.level0ViewIndex = idx;
+  state.level0ExerciseType = Math.random() < 0.5 ? 'sound' : 'word';
+  if (state.level0ExerciseType === 'sound') {
+    const pool = LEVEL0_LETTERS.filter((_,i)=>i!==idx).map(l=>l.c);
+    state.level0QuizLetters = [correct.c, ...pool.sort(()=>Math.random()-0.5).slice(0,2)].sort(()=>Math.random()-0.5);
+    state.level0QuizCorrect = correct.c;
+  } else {
+    const poolWords = LEVEL0_LETTERS.filter((_,i)=>i!==idx).map(l=>l.word);
+    state.level0QuizWords = [correct.word, ...poolWords.sort(()=>Math.random()-0.5).slice(0,2)].sort(()=>Math.random()-0.5);
+    state.level0QuizCorrect = correct.word;
+  }
+  state.level0QuizFeedback = '';
+  state.level0ReviewMode = !!review;
+  state.screen = 'level0-quiz';
+  render();
+  const textToSpeak = state.level0ExerciseType === 'sound' ? correct.name : correct.word;
+  speakTextEL(textToSpeak, () => { setTimeout(() => speakTextEL(textToSpeak), 500); });
+}
+function level0HandleAnswer(isCorrect) {
+  const idx = state.level0ViewIndex;
+  const letterChar = LEVEL0_LETTERS[idx].c;
+  if (isCorrect) {
+    if (state.level0ReviewMode) {
+      state.level0WeakLetters = state.level0WeakLetters.filter(c=>c!==letterChar);
+      saveProfile({ level0_weak_letters: state.level0WeakLetters });
+      state.screen = 'level0-map'; return;
+    }
+    state.level0MasteryCount = (state.level0MasteryCount||0) + 1;
+    if (state.level0MasteryCount >= 2) {
+      if (idx === state.level0Index) {
+        state.level0Index = idx + 1;
+        saveProfile({ level0_index: state.level0Index });
+        if (state.level0Index >= 28) { state.needsLevel0=false; saveProfile({needs_level0:false}); state.screen='level0-complete'; return; }
+      }
+      state.screen = 'level0-map';
+    } else { level0PrepareQuiz(idx, false); }
+  } else {
+    state.level0MasteryCount = 0;
+    state.level0QuizFeedback = 'wrong';
+    if (!state.level0WeakLetters.includes(letterChar)) {
+      state.level0WeakLetters = [...state.level0WeakLetters, letterChar];
+      saveProfile({ level0_weak_letters: state.level0WeakLetters });
+    }
+  }
+}
 function screens() {
   const s = state;
   const track = s.track || 'elder';
@@ -565,6 +613,7 @@ function screens() {
         <div style="font-size:12px;color:#3F4B50;margin-top:6px;">خطوة بخطوة، بلا عجلة — ستعرف كل حرف وصوته وأشكاله</div>
         <div style="height:8px;border-radius:5px;background:#fff;overflow:hidden;margin-top:12px;"><div style="height:100%;width:${pct}%;background:${trackDef.accent};border-radius:5px;"></div></div>
         <div style="font-size:12px;color:#5E6C72;margin-top:6px;">${toArabicNum(s.level0Index)} من ٢٨ حرفًا</div>
+        <div style="font-size:11px;color:#8A968C;margin-top:8px;">💡 جلسة مثالية: ٣-٤ حروف فقط، مع تكرار النطق حتى يترسّخ الصوت</div>
       </div>
       ${s.level0WeakLetters && s.level0WeakLetters.length ? `<div class="card">
         <div style="font-size:13px;font-weight:700;margin-bottom:10px;">🔁 حروف تحتاج مراجعة</div>
@@ -605,13 +654,21 @@ function screens() {
       <button class="btn-primary" data-act="level0gotoquiz" style="margin-top:auto;">التالي: تمرين قصير</button>
     </div>`;
   } else if (s.screen === 'level0-quiz') {
+    const isSound = s.level0ExerciseType === 'sound';
     content = `<div style="flex:1;display:flex;flex-direction:column;padding:22px 18px;gap:20px;">
+      <div style="display:flex;gap:6px;justify-content:center;">${[0,1].map(i=>`<div class="step-dot" style="width:22px;background:${i<s.level0MasteryCount?'#3F8F5F':'#E4D9C2'};"></div>`).join('')}</div>
+      ${isSound ? `
       <div style="text-align:center;font-size:15px;color:#5E6C72;">استمع جيدًا ثم اضغط على الحرف الذي سمعته</div>
       <button data-act="level0playquiz" style="width:96px;height:96px;border-radius:50%;border:none;background:${trackDef.accent};cursor:pointer;display:flex;align-items:center;justify-content:center;margin:0 auto;">${icon('<path d="M8 5v14l11-7z" fill="#fff"/>',34)}</button>
       ${s.level0QuizFeedback==='wrong' ? `<div style="text-align:center;font-size:14px;color:#B4802E;font-weight:700;">ليس تمامًا — حاول مجددًا</div>` : ''}
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;">
         ${s.level0QuizLetters.map(c=>`<button data-act="level0choose" data-letter="${c}" style="aspect-ratio:1;border-radius:16px;border:2px solid #C7BA9C;background:#fff;font-size:34px;font-weight:800;cursor:pointer;box-shadow:0 2px 6px rgba(26,37,41,.05);">${c}</button>`).join('')}
-      </div>
+      </div>` : `
+      <div style="text-align:center;"><div style="font-size:52px;font-weight:800;color:${trackDef.accent};">${LEVEL0_LETTERS[s.level0ViewIndex].c}</div><div style="font-size:14px;color:#5E6C72;margin-top:8px;">أي كلمة من هذه الكلمات تبدأ بهذا الحرف؟ اضغط عليها لسماعها</div></div>
+      ${s.level0QuizFeedback==='wrong' ? `<div style="text-align:center;font-size:14px;color:#B4802E;font-weight:700;">ليس تمامًا — حاول مجددًا</div>` : ''}
+      <div style="display:flex;flex-direction:column;gap:12px;">
+        ${s.level0QuizWords.map(w=>`<button data-act="level0chooseword" data-word="${w}" style="height:56px;border-radius:14px;border:2px solid #C7BA9C;background:#fff;font-size:20px;font-weight:700;cursor:pointer;box-shadow:0 2px 6px rgba(26,37,41,.05);">${w}</button>`).join('')}
+      </div>`}
     </div>`;
   } else if (s.screen === 'level0-complete') {
     content = `<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;text-align:center;padding:32px;">
@@ -945,57 +1002,22 @@ document.getElementById('app').addEventListener('click', async (e) => {
   else if (act==='trackquickno') { state.track='nonnative'; state.highlightMode='word'; saveProfile({track:'nonnative'}); state.screen = state.needsLevel0?'level0-map':'home'; state.activeTab='home'; }
   else if (act==='openlevel0map') { state.screen='level0-map'; }
   else if (act==='retakeassessment') { state.assessStep=1; state.screen='placement'; }
-  else if (act==='openlevel0letter') { state.level0ViewIndex=id; state.screen='level0-letter'; }
+  else if (act==='openlevel0letter') { state.level0ViewIndex=id; state.level0MasteryCount=0; state.screen='level0-letter'; }
   else if (act==='level0playletter') { const L=LEVEL0_LETTERS[state.level0ViewIndex]; speakTextEL(L.name); return; }
   else if (act==='level0playword') { const L=LEVEL0_LETTERS[state.level0ViewIndex]; speakTextEL(L.word); return; }
-  else if (act==='level0gotoquiz') {
-    const idx = state.level0ViewIndex;
-    const correct = LEVEL0_LETTERS[idx].c;
-    const pool = LEVEL0_LETTERS.filter((_,i)=>i!==idx).map(l=>l.c);
-    const distractors = pool.sort(()=>Math.random()-0.5).slice(0,2);
-    state.level0QuizLetters = [correct, ...distractors].sort(()=>Math.random()-0.5);
-    state.level0QuizCorrect = correct;
-    state.level0QuizFeedback = '';
-    state.level0ReviewMode = false;
-    state.screen = 'level0-quiz';
-  }
+  else if (act==='level0gotoquiz') { level0PrepareQuiz(state.level0ViewIndex, false); return; }
   else if (act==='openlevel0review') {
     const letter = btn.dataset.letter;
     const idx = LEVEL0_LETTERS.findIndex(l=>l.c===letter);
-    state.level0ViewIndex = idx;
-    const pool = LEVEL0_LETTERS.filter((_,i)=>i!==idx).map(l=>l.c);
-    const distractors = pool.sort(()=>Math.random()-0.5).slice(0,2);
-    state.level0QuizLetters = [letter, ...distractors].sort(()=>Math.random()-0.5);
-    state.level0QuizCorrect = letter;
-    state.level0QuizFeedback = '';
-    state.level0ReviewMode = true;
-    state.screen = 'level0-quiz';
+    level0PrepareQuiz(idx, true);
+    return;
   }
-  else if (act==='level0playquiz') { speakTextEL(LEVEL0_LETTERS[state.level0ViewIndex].name); return; }
-  else if (act==='level0choose') {
-    const letter = btn.dataset.letter;
-    if (letter === state.level0QuizCorrect) {
-      if (state.level0ReviewMode) {
-        state.level0WeakLetters = state.level0WeakLetters.filter(c=>c!==letter);
-        saveProfile({ level0_weak_letters: state.level0WeakLetters });
-        state.screen = 'level0-map';
-      } else {
-        const idx = state.level0ViewIndex;
-        if (idx === state.level0Index) {
-          state.level0Index = idx + 1;
-          saveProfile({ level0_index: state.level0Index });
-          if (state.level0Index >= 28) { state.needsLevel0 = false; saveProfile({ needs_level0: false }); state.screen = 'level0-complete'; }
-          else state.screen = 'level0-map';
-        } else { state.screen = 'level0-map'; }
-      }
-    } else {
-      state.level0QuizFeedback = 'wrong';
-      if (!state.level0WeakLetters.includes(state.level0QuizCorrect)) {
-        state.level0WeakLetters = [...state.level0WeakLetters, state.level0QuizCorrect];
-        saveProfile({ level0_weak_letters: state.level0WeakLetters });
-      }
-    }
+  else if (act==='level0playquiz') {
+    const text = state.level0ExerciseType==='sound' ? LEVEL0_LETTERS[state.level0ViewIndex].name : LEVEL0_LETTERS[state.level0ViewIndex].word;
+    speakTextEL(text); return;
   }
+  else if (act==='level0choose') { level0HandleAnswer(btn.dataset.letter === state.level0QuizCorrect); }
+  else if (act==='level0chooseword') { speakTextEL(btn.dataset.word); level0HandleAnswer(btn.dataset.word === state.level0QuizCorrect); }
   else if (act==='openreadiness') { state.screen='readiness'; state.readinessTargetLevel=Number(id); state.fluencyStage='idle'; state.fluencyElapsed=0; }
   else if (act==='startreadinessreading') {
     state.fluencyStage='reading'; state.fluencyElapsed=0; render();
