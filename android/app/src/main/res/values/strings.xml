@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">أمي</string>
+    <string name="title_activity_main">أمي</string>
+    <string name="package_name">com.orphanai.ommy</string>
+    <string name="custom_url_scheme">com.orphanai.ommy</string>
+</resources>
