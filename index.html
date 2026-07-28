@@ -4,15 +4,15 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>أمي — مدرّب القراءة العربية بالصوت</title>
-<meta name="app-version" content="v1.2.0">
+<meta name="app-version" content="v1.3.0">
 <meta name="copyright" content="© 2026 مشروع أمي. جميع الحقوق محفوظة.">
-<!-- التحديثات: تحميل الدروس/المواقف من Supabase + حساب السلاسل الحقيقي من daily_activity -->
+<!-- التحديثات v1.3.0: لوحة تقدّم (دروس مكتملة، تسجيلات)، تخزين مؤقت لصوت TTS، تباين وأزرار أكبر لكبار السن -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   * { box-sizing: border-box; }
-  body { margin: 0; background: #EDE7D8; font-family: 'Cairo', system-ui, sans-serif; }
+  body { margin: 0; background: #EDE7D8; font-family: 'Cairo', system-ui, sans-serif; color:#1A2529; }
   button { font-family: inherit; }
   a { color: #1F6B63; }
   a:hover { color: #144A44; }
@@ -22,17 +22,17 @@
   .shell { width: 100%; max-width: 520px; min-height: 100vh; display: flex; flex-direction: column; background: #FAF5EA; box-shadow: 0 0 40px rgba(0,0,0,.06); }
   .topbar { display:flex; align-items:center; gap:10px; padding:10px 16px; border-bottom:1px solid #E4D9C2; flex-shrink:0; }
   .content { flex:1; overflow-y:auto; display:flex; flex-direction:column; }
-  .btn-primary { height:54px; border-radius:14px; border:none; background:#1F6B63; color:#fff; font-size:16px; font-weight:700; cursor:pointer; }
-  .btn-outline { height:50px; border-radius:14px; border:1px solid #E4D9C2; background:#fff; color:#26333B; font-size:14px; font-weight:700; cursor:pointer; }
-  .card { background:#fff; border:1px solid #E4D9C2; border-radius:18px; padding:18px; }
-  .bottomnav { display:flex; border-top:1px solid #E4D9C2; background:#fff; flex-shrink:0; }
-  .navitem { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; padding:10px 4px 12px; border:none; background:transparent; cursor:pointer; }
-  input[type=email], input[type=text] { height:58px; border-radius:14px; border:1px solid #E4D9C2; background:#fff; font-size:18px; text-align:center; color:#26333B; font-family:'Cairo',sans-serif; width:100%; }
+  .btn-primary { height:60px; border-radius:14px; border:none; background:#1F6B63; color:#fff; font-size:17px; font-weight:700; cursor:pointer; }
+  .btn-outline { height:56px; border-radius:14px; border:2px solid #C7BA9C; background:#fff; color:#1A2529; font-size:15px; font-weight:700; cursor:pointer; }
+  .card { background:#fff; border:2px solid #C7BA9C; border-radius:18px; padding:18px; }
+  .bottomnav { display:flex; border-top:2px solid #C7BA9C; background:#fff; flex-shrink:0; }
+  .navitem { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; padding:12px 4px 14px; border:none; background:transparent; cursor:pointer; min-height:56px; }
+  input[type=email], input[type=text] { height:60px; border-radius:14px; border:2px solid #C7BA9C; background:#fff; font-size:19px; text-align:center; color:#1A2529; font-family:'Cairo',sans-serif; width:100%; }
 </style>
 </head>
 <body>
 <div id="app"><div class="shell" id="shell"></div></div>
-<div style="position:fixed;bottom:6px;left:50%;transform:translateX(-50%);font-size:10px;color:#8A968C;background:#FAF5EA;padding:2px 10px;border-radius:8px;z-index:999;">© 2026 أمي — جميع الحقوق محفوظة · v1.2.0</div>
+<div style="position:fixed;bottom:6px;left:50%;transform:translateX(-50%);font-size:10px;color:#8A968C;background:#FAF5EA;padding:2px 10px;border-radius:8px;z-index:999;">© 2026 أمي — جميع الحقوق محفوظة · v1.3.0</div>
 
 <script>
 const SUPABASE_URL = 'https://thdsfpjmzownaajfxmcv.supabase.co';
@@ -102,7 +102,7 @@ const state = {
   currentLessonId: 1, highlightMode: 'letter', email: '', otpCode: '', authError: '',
   authLoading: false, mimicryStage: 'idle', fluencyStage: 'idle', fluencyElapsed: 0,
   activeScenarioId: 1, myRecordingUrl: null, micError: '', userId: null,
-  streak: 0,
+  streak: 0, completedCount: 0, totalLessons: 0, recordingsCount: 0, recentRecordings: [],
 };
 let mediaRecorder = null, audioChunks = [], mediaStream = null, fluencyTimer = null, playTimer = null;
 
@@ -112,8 +112,21 @@ function icon(svg, size=20) { return `<svg width="${size}" height="${size}" view
 async function init() {
   await loadContent();
   const { data: { session } } = await sb.auth.getSession();
-  if (session) { await loadProfile(session.user.id); await loadStreak(); }
+  if (session) { await loadProfile(session.user.id); await loadStreak(); await loadProgressStats(); }
   render();
+}
+
+async function loadProgressStats() {
+  if (!state.userId) return;
+  try {
+    const { count: completedCount } = await sb.from('lesson_progress').select('*', { count: 'exact', head: true }).eq('user_id', state.userId).eq('status', 'completed');
+    state.completedCount = completedCount || 0;
+    state.totalLessons = LESSONS.length;
+    const { count: recordingsCount } = await sb.from('recordings').select('*', { count: 'exact', head: true }).eq('user_id', state.userId);
+    state.recordingsCount = recordingsCount || 0;
+    const { data: recent } = await sb.from('recordings').select('kind, created_at').eq('user_id', state.userId).order('created_at', { ascending: false }).limit(5);
+    state.recentRecordings = recent || [];
+  } catch(e) {}
 }
 
 async function loadStreak() {
@@ -161,6 +174,7 @@ async function logActivity() {
 async function saveLessonProgress(lessonId, status) {
   if (!state.userId) return;
   try { await sb.from('lesson_progress').upsert({ user_id: state.userId, lesson_id: lessonId, status, attempts: 1, last_attempt_at: new Date().toISOString(), completed_at: status==='completed'?new Date().toISOString():null }, { onConflict: 'user_id,lesson_id' }); } catch(e) {}
+  await loadProgressStats();
 }
 
 async function sendOtp() {
@@ -216,14 +230,36 @@ async function uploadRecording(blob, kind, lessonId) {
     const { error } = await sb.storage.from('recordings').upload(path, blob, { contentType: 'audio/webm' });
     if (error) return;
     await sb.from('recordings').insert({ user_id: state.userId, kind, lesson_id: kind==='mimicry'?lessonId:null, audio_url: path });
+    await loadProgressStats();
   } catch(e) {}
 }
 
 const ELEVENLABS_VOICE_ID = 'pNInz6obpgDQGcFmaJgB';
 const TTS_PROXY_URL = `${SUPABASE_URL}/functions/v1/tts-proxy`;
+const TTS_CACHE_KEY = 'amie_tts_cache_v1';
+const TTS_CACHE_MAX = 40;
 let _currentAudio = null;
 
+function ttsCacheKey(text) { let h = 0; for (let i=0;i<text.length;i++) { h = (h*31 + text.charCodeAt(i))|0; } return 'k'+h; }
+function readTtsCache() { try { return JSON.parse(localStorage.getItem(TTS_CACHE_KEY) || '{}'); } catch(e) { return {}; } }
+function writeTtsCache(cache) {
+  const keys = Object.keys(cache);
+  if (keys.length > TTS_CACHE_MAX) { keys.sort((a,b)=>cache[a]._t-cache[b]._t); keys.slice(0, keys.length-TTS_CACHE_MAX).forEach(k=>delete cache[k]); }
+  try { localStorage.setItem(TTS_CACHE_KEY, JSON.stringify(cache)); } catch(e) {}
+}
+function blobToBase64(blob) { return new Promise((res,rej) => { const r = new FileReader(); r.onloadend = () => res(r.result); r.onerror = rej; r.readAsDataURL(blob); }); }
+
 async function speakTextEL(text, onEnd) {
+  const key = ttsCacheKey(text);
+  const cache = readTtsCache();
+  if (cache[key]) {
+    if (_currentAudio) _currentAudio.pause();
+    _currentAudio = new Audio(cache[key].data);
+    if (onEnd) _currentAudio.onended = onEnd;
+    _currentAudio.onerror = () => { if (onEnd) onEnd(); };
+    await _currentAudio.play();
+    return;
+  }
   try {
     const res = await fetch(TTS_PROXY_URL, {
       method: 'POST',
@@ -238,6 +274,7 @@ async function speakTextEL(text, onEnd) {
     if (onEnd) _currentAudio.onended = onEnd;
     _currentAudio.onerror = () => { if (onEnd) onEnd(); };
     await _currentAudio.play();
+    blobToBase64(blob).then(data => { const c = readTtsCache(); c[key] = { data, _t: Date.now() }; writeTtsCache(c); }).catch(()=>{});
   } catch (e) {
     console.warn('TTS proxy failed, falling back to browser voice', e);
     speakText(text, null, onEnd);
@@ -295,7 +332,7 @@ function screens() {
   if (s.screen === 'splash') {
     content = `<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px;gap:22px;text-align:center;">
       <div style="width:88px;height:88px;border-radius:24px;background:#1F6B63;display:flex;align-items:center;justify-content:center;">${icon('<path d="M4 19V5a1 1 0 011-1h11l4 4v11a1 1 0 01-1 1H5a1 1 0 01-1-1z" fill="none" stroke="#fff" stroke-width="1.4"/><path d="M8 9h8M8 13h6M8 17h4" stroke="#fff" stroke-width="1.4" stroke-linecap="round"/>',46)}</div>
-      <div><div style="font-size:30px;font-weight:800;color:#26333B;">أمي</div><div style="font-size:16px;color:#5E6C72;margin-top:10px;line-height:1.7;max-width:280px;">مدرّبك الصوتي لتعلّم القراءة العربية، خطوة بخطوة وبثقة</div></div>
+      <div><div style="font-size:30px;font-weight:800;color:#26333B;">أمي</div><div style="font-size:16px;color:#3F4B50;margin-top:10px;line-height:1.7;max-width:280px;">مدرّبك الصوتي لتعلّم القراءة العربية، خطوة بخطوة وبثقة</div></div>
       <button class="btn-primary" data-act="goauth" style="width:100%;max-width:280px;font-size:18px;">ابدأ الآن</button>
       <div style="font-size:13px;color:#8A968C;">دقيقتان فقط لتحديد أفضل بداية لك</div>
     </div>`;
@@ -351,16 +388,31 @@ function screens() {
       </div>
     </div>`;
   } else if (s.screen === 'profile') {
+    const pct = s.totalLessons > 0 ? Math.round((s.completedCount / s.totalLessons) * 100) : 0;
+    const kindLabel = { mimicry: 'تقليد صوت', fluency: 'قراءة مستقلة' };
     content = `<div style="flex:1;display:flex;flex-direction:column;padding:20px 18px;gap:20px;">
+      <div class="card">
+        <div style="font-size:14px;font-weight:700;margin-bottom:12px;">تقدّمك</div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+          <div style="font-size:13px;color:#3F4B50;">الدروس المكتملة</div>
+          <div style="font-size:15px;font-weight:800;color:${trackDef.accent};">${toArabicNum(s.completedCount)} من ${toArabicNum(s.totalLessons)}</div>
+        </div>
+        <div style="height:10px;border-radius:6px;background:#F1EAD9;overflow:hidden;margin-bottom:14px;"><div style="height:100%;width:${pct}%;background:${trackDef.accent};border-radius:6px;"></div></div>
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <div style="font-size:13px;color:#3F4B50;">التسجيلات الصوتية</div>
+          <div style="font-size:15px;font-weight:800;color:#26333B;">${toArabicNum(s.recordingsCount)}</div>
+        </div>
+        ${s.recentRecordings && s.recentRecordings.length ? `<div style="margin-top:14px;display:flex;flex-direction:column;gap:8px;">${s.recentRecordings.map(r=>`<div style="display:flex;justify-content:space-between;font-size:12px;color:#5E6C72;background:#F1EAD9;border-radius:8px;padding:8px 10px;"><span>${kindLabel[r.kind]||r.kind}</span><span>${new Date(r.created_at).toLocaleDateString('ar')}</span></div>`).join('')}</div>` : ''}
+      </div>
       <div class="card"><div style="font-size:14px;font-weight:700;margin-bottom:12px;">حجم الخط</div>
-      <div style="display:flex;gap:8px;">${[0,1,2].map(i=>`<button data-act="setfont" data-idx="${i}" style="flex:1;height:44px;border-radius:9px;border:none;font-size:${13+i*3}px;font-weight:700;cursor:pointer;${s.fontScaleIdx===i?'background:#1F6B63;color:#fff;':'background:#F1EAD9;color:#26333B;'}">أ</button>`).join('')}</div></div>
+      <div style="display:flex;gap:8px;">${[0,1,2].map(i=>`<button data-act="setfont" data-idx="${i}" style="flex:1;height:48px;border-radius:9px;border:none;font-size:${13+i*3}px;font-weight:700;cursor:pointer;${s.fontScaleIdx===i?'background:#1F6B63;color:#fff;':'background:#F1EAD9;color:#1A2529;'}">أ</button>`).join('')}</div></div>
       <div class="card"><div style="font-size:14px;font-weight:700;margin-bottom:4px;">مسارك الحالي</div>
       <div style="font-size:16px;font-weight:800;color:${trackDef.accent};margin-bottom:14px;">${trackDef.title}</div>
       <div style="display:flex;flex-direction:column;gap:8px;">
-        <button data-act="setelder" style="height:48px;border-radius:12px;border:1px solid ${track==='elder'?TRACKS.elder.accent:'#E4D9C2'};background:${track==='elder'?TRACKS.elder.accentSoft:'#fff'};font-size:14px;font-weight:700;cursor:pointer;">الطلاقة والثقة</button>
-        <button data-act="setnonnative" style="height:48px;border-radius:12px;border:1px solid ${track==='nonnative'?TRACKS.nonnative.accent:'#E4D9C2'};background:${track==='nonnative'?TRACKS.nonnative.accentSoft:'#fff'};font-size:14px;font-weight:700;cursor:pointer;">تعلّم من الصفر</button>
+        <button data-act="setelder" style="height:54px;border-radius:12px;border:2px solid ${track==='elder'?TRACKS.elder.accent:'#C7BA9C'};background:${track==='elder'?TRACKS.elder.accentSoft:'#fff'};font-size:15px;font-weight:700;cursor:pointer;color:#1A2529;">الطلاقة والثقة</button>
+        <button data-act="setnonnative" style="height:54px;border-radius:12px;border:2px solid ${track==='nonnative'?TRACKS.nonnative.accent:'#C7BA9C'};background:${track==='nonnative'?TRACKS.nonnative.accentSoft:'#fff'};font-size:15px;font-weight:700;cursor:pointer;color:#1A2529;">تعلّم من الصفر</button>
       </div></div>
-      <button data-act="logout" style="height:48px;border-radius:12px;border:1px solid #E4D9C2;background:#fff;color:#C0392B;font-size:14px;font-weight:700;cursor:pointer;">تسجيل الخروج</button>
+      <button data-act="logout" style="height:54px;border-radius:12px;border:2px solid #C7BA9C;background:#fff;color:#C0392B;font-size:15px;font-weight:700;cursor:pointer;">تسجيل الخروج</button>
       <div style="text-align:center;font-size:11px;color:#8A968C;">© 2026 أمي. جميع الحقوق محفوظة.</div>
     </div>`;
   } else if (s.screen === 'lesson') {
@@ -483,7 +535,7 @@ document.getElementById('app').addEventListener('click', async (e) => {
   else if (act==='gohome') { state.screen='home'; state.activeTab='home'; }
   else if (act==='golessons') { state.screen='lessons'; state.activeTab='lessons'; }
   else if (act==='goscenarios') { state.screen='scenarios'; state.activeTab='scenarios'; }
-  else if (act==='goprofile') { state.screen='profile'; state.activeTab='profile'; }
+  else if (act==='goprofile') { state.screen='profile'; state.activeTab='profile'; loadProgressStats().then(render); }
   else if (act==='gofluency') { state.screen='fluency'; state.fluencyStage='idle'; state.fluencyElapsed=0; }
   else if (act==='openlesson') { state.currentLessonId=id; state.screen='lesson'; state.highlightMode = state.track==='elder'?'letter':'word'; state._playing=false; state._playIdx=-1; render(); autoPlayCurrent(); return; }
   else if (act==='openmimicry') { if(id) state.currentLessonId=id; state.screen='mimicry'; state.mimicryStage='idle'; }
@@ -524,6 +576,7 @@ document.getElementById('app').addEventListener('click', async (e) => {
     if (fluencyTimer) clearInterval(fluencyTimer);
     await stopRecordingAndSave('fluency', null);
     state.fluencyStage='done'; logActivity();
+    await loadProgressStats();
   }
   else if (act==='logout') { await sb.auth.signOut(); state.userId=null; state.track=null; state.screen='splash'; }
   render();
