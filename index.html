@@ -431,9 +431,36 @@ function screens() {
       </div>
     </div>`;
   } else if (s.screen === 'lessons') {
-    content = `<div style="flex:1;display:flex;flex-direction:column;padding:20px 18px;gap:14px;">
+    const levels = [1,2,3,4,5];
+    content = `<div style="flex:1;display:flex;flex-direction:column;padding:20px 18px;gap:18px;">
       <div style="font-size:13px;color:#5E6C72;">اختر درسًا لتبدأ التظليل الصوتي المتزامن</div>
-      ${LESSONS.map(l=>`<button data-act="openlesson" data-id="${l.id}" style="background:#fff;border:1px solid #E4D9C2;border-radius:16px;padding:14px;display:flex;align-items:center;gap:12px;text-align:right;cursor:pointer;"><div style="width:40px;height:40px;border-radius:12px;background:#F1EAD9;display:flex;align-items:center;justify-content:center;font-weight:700;">${l.num}</div><div style="flex:1;"><div style="font-size:15px;font-weight:700;">${l.title}</div><div style="font-size:12px;color:${trackDef.accent};margin-top:3px;">${l.tag}</div></div></button>`).join('')}
+      ${levels.map(lvl => {
+        const lessonsInLvl = LESSONS.filter(l=>l.level===lvl);
+        if (!lessonsInLvl.length) return '';
+        const unlocked = isLevelUnlocked(lvl);
+        return `<div>
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+            <div style="font-size:13px;font-weight:800;color:${unlocked?'#26333B':'#8A968C'};">المستوى ${toArabicNum(lvl)}</div>
+            ${!unlocked ? icon('<path d="M6 10V7a6 6 0 0112 0v3M5 10h14a1 1 0 011 1v9a1 1 0 01-1 1H5a1 1 0 01-1-1v-9a1 1 0 011-1z" fill="none" stroke="#8A968C" stroke-width="1.6"/>',16) : ''}
+          </div>
+          <div style="display:flex;flex-direction:column;gap:10px;">
+            ${lessonsInLvl.map(l => {
+              const completed = state.completedLessonIds.has(l.id);
+              if (!unlocked) {
+                return `<div style="background:#F1EAD9;border:2px solid #E4D9C2;border-radius:16px;padding:14px;display:flex;align-items:center;gap:12px;opacity:0.6;">
+                  <div style="width:40px;height:40px;border-radius:12px;background:#E4D9C2;display:flex;align-items:center;justify-content:center;flex-shrink:0;">${icon('<path d="M6 10V7a6 6 0 0112 0v3M5 10h14a1 1 0 011 1v9a1 1 0 01-1 1H5a1 1 0 01-1-1v-9a1 1 0 011-1z" fill="none" stroke="#8A968C" stroke-width="1.6"/>',18)}</div>
+                  <div style="flex:1;font-size:14px;font-weight:600;color:#8A968C;">${l.title}</div>
+                </div>`;
+              }
+              return `<button data-act="openlesson" data-id="${l.id}" style="background:#fff;border:2px solid ${completed?'#3F8F5F':'#C7BA9C'};border-radius:16px;padding:14px;display:flex;align-items:center;gap:12px;text-align:right;cursor:pointer;">
+                <div style="width:40px;height:40px;border-radius:12px;background:${completed?'#DCEFE1':'#F1EAD9'};display:flex;align-items:center;justify-content:center;flex-shrink:0;font-weight:700;color:#1A2529;">${completed?icon('<path d="M5 12l5 5L19 7" stroke="#3F8F5F" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>',18):l.num}</div>
+                <div style="flex:1;min-width:0;"><div style="font-size:15px;font-weight:700;">${l.title}</div><div style="font-size:12px;color:${trackDef.accent};margin-top:3px;">${l.tag}</div></div>
+                <div style="width:38px;height:38px;border-radius:50%;background:#1F6B63;display:flex;align-items:center;justify-content:center;flex-shrink:0;">${icon('<path d="M8 5v14l11-7z" fill="#fff"/>',16)}</div>
+              </button>`;
+            }).join('')}
+          </div>
+        </div>`;
+      }).join('')}
     </div>`;
   } else if (s.screen === 'scenarios') {
     content = `<div style="flex:1;display:flex;flex-direction:column;padding:20px 18px;gap:14px;">
@@ -601,7 +628,7 @@ document.getElementById('app').addEventListener('click', async (e) => {
   if (!btn) return;
   const act = btn.dataset.act;
   const id = btn.dataset.id ? Number(btn.dataset.id) : null;
-  else if (act==='goauth') state.screen='auth-phone';
+  if (act==='goauth') state.screen='auth-phone';
   else if (act==='openreadiness') { state.screen='readiness'; state.readinessTargetLevel=Number(id); state.fluencyStage='idle'; state.fluencyElapsed=0; }
   else if (act==='startreadinessreading') {
     state.fluencyStage='reading'; state.fluencyElapsed=0; render();
@@ -624,7 +651,6 @@ document.getElementById('app').addEventListener('click', async (e) => {
   else if (act==='golessons') { state.screen='lessons'; state.activeTab='lessons'; }
   else if (act==='goscenarios') { state.screen='scenarios'; state.activeTab='scenarios'; }
   else if (act==='goprofile') { state.screen='profile'; state.activeTab='profile'; loadProgressStats().then(render); }
-  else if (act==='openreadiness2noop') { /* placeholder */ }
   else if (act==='gofluency') { state.screen='fluency'; state.fluencyStage='idle'; state.fluencyElapsed=0; }
   else if (act==='openlesson') { state.currentLessonId=id; state.screen='lesson'; state.highlightMode = state.track==='elder'?'letter':'word'; state._playing=false; state._playIdx=-1; render(); autoPlayCurrent(); return; }
   else if (act==='openmimicry') { if(id) state.currentLessonId=id; state.screen='mimicry'; state.mimicryStage='idle'; }
