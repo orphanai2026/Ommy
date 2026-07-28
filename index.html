@@ -4,9 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>أمي — مدرّب القراءة العربية بالصوت</title>
-<meta name="app-version" content="v1.7.0">
+<meta name="app-version" content="v2.1.0">
 <meta name="copyright" content="© 2026 مشروع أمي. جميع الحقوق محفوظة.">
-<!-- التحديثات v1.7.0: أيقونات مميّزة لكل موقف حياتي، تحسين بطاقات الرئيسية والمواقف بظلال وسهم اتجاه -->
+<!-- التحديثات v2.1.0: تثبيت التطبيق كأيقونة على الشاشة الرئيسية (PWA)، تكرار متباعد ذكي للحروف/الدروس الضعيفة -->
+<link rel="manifest" href="./manifest.json">
+<meta name="theme-color" content="#1F6B63">
+<link rel="apple-touch-icon" href="./icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -36,7 +39,12 @@
 </head>
 <body>
 <div id="app"><div class="shell" id="shell"></div></div>
-<div style="position:fixed;bottom:6px;left:50%;transform:translateX(-50%);font-size:10px;color:#8A968C;background:#FAF5EA;padding:2px 10px;border-radius:8px;z-index:999;">© 2026 أمي — جميع الحقوق محفوظة · v1.7.0</div>
+<div style="position:fixed;bottom:6px;left:50%;transform:translateX(-50%);font-size:10px;color:#8A968C;background:#FAF5EA;padding:2px 10px;border-radius:8px;z-index:999;">© 2026 أمي — جميع الحقوق محفوظة · v2.1.0</div>
+<div id="installBanner" style="display:none;position:fixed;bottom:34px;left:50%;transform:translateX(-50%);width:calc(100% - 32px);max-width:480px;background:#fff;border:2px solid #C7BA9C;border-radius:16px;padding:12px 14px;box-shadow:0 8px 24px rgba(26,37,41,.15);z-index:1000;display:flex;align-items:center;gap:10px;">
+  <div style="flex:1;font-size:13px;font-weight:600;color:#26333B;" id="installBannerText">ثبّت أمي على شاشتك الرئيسية لفتحه بلمسة واحدة</div>
+  <button id="installBannerBtn" style="height:38px;padding:0 16px;border-radius:10px;border:none;background:#1F6B63;color:#fff;font-size:13px;font-weight:700;cursor:pointer;flex-shrink:0;">تثبيت</button>
+  <button id="installBannerClose" style="width:32px;height:32px;border-radius:8px;border:none;background:#F1EAD9;cursor:pointer;flex-shrink:0;font-size:16px;">×</button>
+</div>
 
 <script>
 const SUPABASE_URL = 'https://thdsfpjmzownaajfxmcv.supabase.co';
@@ -80,6 +88,37 @@ const FALLBACK_SCENARIOS = [
   {id:12, title:'تذكرة الحافلة', text:'الرحلة القادمة الساعة الرابعة عصرًا من الرصيف الثالث', level:5},
 ];
 const ARABIC_NUMS = ['٠','١','٢','٣','٤','٥','٦','٧','٨','٩'];
+const LEVEL0_RAW = [
+  ['ا','ألف','ا','ا','ـا','ـا','أب'],
+  ['ب','باء','ب','بـ','ـبـ','ـب','باب'],
+  ['ت','تاء','ت','تـ','ـتـ','ـت','تمر'],
+  ['ث','ثاء','ث','ثـ','ـثـ','ـث','ثوب'],
+  ['ج','جيم','ج','جـ','ـجـ','ـج','جبل'],
+  ['ح','حاء','ح','حـ','ـحـ','ـح','حليب'],
+  ['خ','خاء','خ','خـ','ـخـ','ـخ','خبز'],
+  ['د','دال','د','د','ـد','ـد','دواء'],
+  ['ذ','ذال','ذ','ذ','ـذ','ـذ','ذهب'],
+  ['ر','راء','ر','ر','ـر','ـر','رجل'],
+  ['ز','زاي','ز','ز','ـز','ـز','زيت'],
+  ['س','سين','س','سـ','ـسـ','ـس','سوق'],
+  ['ش','شين','ش','شـ','ـشـ','ـش','شاي'],
+  ['ص','صاد','ص','صـ','ـصـ','ـص','صلاة'],
+  ['ض','ضاد','ض','ضـ','ـضـ','ـض','ضيف'],
+  ['ط','طاء','ط','طـ','ـطـ','ـط','طبيب'],
+  ['ظ','ظاء','ظ','ظـ','ـظـ','ـظ','ظل'],
+  ['ع','عين','ع','عـ','ـعـ','ـع','عصير'],
+  ['غ','غين','غ','غـ','ـغـ','ـغ','غداء'],
+  ['ف','فاء','ف','فـ','ـفـ','ـف','فجر'],
+  ['ق','قاف','ق','قـ','ـقـ','ـق','قلم'],
+  ['ك','كاف','ك','كـ','ـكـ','ـك','كتاب'],
+  ['ل','لام','ل','لـ','ـلـ','ـل','لحم'],
+  ['م','ميم','م','مـ','ـمـ','ـم','ماء'],
+  ['ن','نون','ن','نـ','ـنـ','ـن','نور'],
+  ['ه','هاء','ه','هـ','ـهـ','ـه','هدية'],
+  ['و','واو','و','و','ـو','ـو','وقت'],
+  ['ي','ياء','ي','يـ','ـيـ','ـي','يد'],
+];
+const LEVEL0_LETTERS = LEVEL0_RAW.map(([c,name,iso,init,med,fin,word]) => ({c,name,iso,init,med,fin,word}));
 function toArabicNum(n) { return String(n).split('').map(d => ARABIC_NUMS[+d] ?? d).join(''); }
 let LESSONS = FALLBACK_LESSONS.slice();
 let SCENARIOS = FALLBACK_SCENARIOS.slice();
@@ -109,7 +148,10 @@ const state = {
   streak: 0, completedCount: 0, totalLessons: 0, recordingsCount: 0, recentRecordings: [],
   avgWpm: null, recordStartTs: null, readinessLevel: 0, completedLessonIds: new Set(), readinessTargetLevel: null,
   shareCode: null, notifEnabled: false, publicShare: null,
+  needsLevel0: false, level0Index: 0, level0ViewIndex: 0, level0QuizLetters: [], level0QuizCorrect: '', level0QuizFeedback: '', level0WeakLetters: [], level0ReviewMode: false,
+  reviewLessonId: null,
 };
+let deferredInstallPrompt = null;
 let mediaRecorder = null, audioChunks = [], mediaStream = null, fluencyTimer = null, playTimer = null;
 
 function el(html) { const d = document.createElement('div'); d.innerHTML = html.trim(); return d.firstChild; }
@@ -120,6 +162,7 @@ async function init() {
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('./sw.js').catch(()=>{});
   }
+  setupInstallPrompt();
   const params = new URLSearchParams(location.search);
   const shareParam = params.get('share');
   if (shareParam) {
@@ -139,6 +182,34 @@ async function init() {
   render();
 }
 
+function setupInstallPrompt() {
+  const banner = document.getElementById('installBanner');
+  const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+  if (isStandalone) return;
+  if (localStorage.getItem('amie_install_dismissed')) return;
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredInstallPrompt = e;
+    banner.style.display = 'flex';
+  });
+  if (isIos) {
+    document.getElementById('installBannerText').textContent = 'ثبّت أمي: اضغط زر المشاركة ثم "إضافة إلى الشاشة الرئيسية"';
+    document.getElementById('installBannerBtn').style.display = 'none';
+    banner.style.display = 'flex';
+  }
+  document.getElementById('installBannerBtn').onclick = async () => {
+    if (!deferredInstallPrompt) return;
+    deferredInstallPrompt.prompt();
+    await deferredInstallPrompt.userChoice;
+    deferredInstallPrompt = null;
+    banner.style.display = 'none';
+  };
+  document.getElementById('installBannerClose').onclick = () => {
+    banner.style.display = 'none';
+    localStorage.setItem('amie_install_dismissed', '1');
+  };
+}
 function maybeShowDailyReminder() {
   if (!('Notification' in window) || Notification.permission !== 'granted') return;
   const today = new Date().toISOString().slice(0,10);
@@ -165,6 +236,8 @@ async function loadProgressStats() {
     state.completedLessonIds = new Set((completedRows||[]).map(r=>r.lesson_id));
     const { count: recordingsCount } = await sb.from('recordings').select('*', { count: 'exact', head: true }).eq('user_id', state.userId);
     state.recordingsCount = recordingsCount || 0;
+    const { data: attemptRows } = await sb.from('lesson_progress').select('lesson_id, attempts, status').eq('user_id', state.userId).eq('status', 'completed').gt('attempts', 1).order('attempts', { ascending: false }).limit(1);
+    state.reviewLessonId = (attemptRows && attemptRows.length) ? attemptRows[0].lesson_id : null;
     const { data: recent } = await sb.from('recordings').select('kind, created_at').eq('user_id', state.userId).order('created_at', { ascending: false }).limit(5);
     state.recentRecordings = recent || [];
   } catch(e) {}
@@ -214,7 +287,11 @@ async function loadProfile(userId) {
     state.readinessLevel = profile.readiness_level || 0;
     state.shareCode = profile.share_code || null;
     state.notifEnabled = !!profile.notif_enabled;
-    state.screen = profile.track ? 'home' : 'test';
+    state.needsLevel0 = !!profile.needs_level0;
+    state.level0Index = profile.level0_index || 0;
+    state.level0WeakLetters = profile.level0_weak_letters || [];
+    if (profile.track) { state.screen = state.needsLevel0 ? 'level0-map' : 'home'; }
+    else { state.screen = profile.placement_done ? 'test' : 'placement'; }
     state.activeTab = 'home';
   }
 }
@@ -235,7 +312,11 @@ async function logActivity() {
 }
 async function saveLessonProgress(lessonId, status) {
   if (!state.userId) return;
-  try { await sb.from('lesson_progress').upsert({ user_id: state.userId, lesson_id: lessonId, status, attempts: 1, last_attempt_at: new Date().toISOString(), completed_at: status==='completed'?new Date().toISOString():null }, { onConflict: 'user_id,lesson_id' }); } catch(e) {}
+  try {
+    const { data: existing } = await sb.from('lesson_progress').select('attempts').eq('user_id', state.userId).eq('lesson_id', lessonId).maybeSingle();
+    const attempts = (existing?.attempts || 0) + 1;
+    await sb.from('lesson_progress').upsert({ user_id: state.userId, lesson_id: lessonId, status, attempts, last_attempt_at: new Date().toISOString(), completed_at: status==='completed'?new Date().toISOString():null }, { onConflict: 'user_id,lesson_id' });
+  } catch(e) {}
   await loadProgressStats();
 }
 
@@ -434,9 +515,9 @@ function screens() {
   const currentScenario = SCENARIOS.find(sc=>sc.id===s.activeScenarioId) || SCENARIOS[0];
   const fs = FONT_SCALES[s.fontScaleIdx];
 
-  const topTitles = { home:'أمي', lessons:'الدروس', scenarios:'مواقف من الحياة', profile:'حسابي', lesson: currentLesson.title, mimicry:'قلّد القراءة', fluency:'القراءة المستقلة', 'scenario-detail': currentScenario.title, readiness: 'تحقق الجاهزية' };
-  const showTopBar = !['splash','test','track-suggest','auth-phone','auth-otp','public-share'].includes(s.screen);
-  const showBack = ['lesson','mimicry','fluency','scenario-detail','readiness'].includes(s.screen);
+  const topTitles = { home:'أمي', lessons:'الدروس', scenarios:'مواقف من الحياة', profile:'حسابي', lesson: currentLesson.title, mimicry:'قلّد القراءة', fluency:'القراءة المستقلة', 'scenario-detail': currentScenario.title, readiness: 'تحقق الجاهزية', 'level0-map':'الأساس: الحروف', 'level0-letter':'تعلّم الحرف', 'level0-quiz':'تمرين سريع' };
+  const showTopBar = !['splash','test','track-suggest','auth-phone','auth-otp','public-share','placement','level0-complete'].includes(s.screen);
+  const showBack = ['lesson','mimicry','fluency','scenario-detail','readiness','level0-letter','level0-quiz'].includes(s.screen);
   const showBottomNav = ['home','lessons','scenarios','profile'].includes(s.screen);
 
   let topbar = '';
@@ -453,7 +534,82 @@ function screens() {
   }
 
   let content = '';
-  if (s.screen === 'public-share') {
+  if (s.screen === 'placement') {
+    content = `<div style="flex:1;display:flex;flex-direction:column;padding:32px 22px;gap:22px;justify-content:center;text-align:center;">
+      <div class="brand-mark" style="width:60px;height:60px;border-radius:16px;display:flex;align-items:center;justify-content:center;margin:0 auto;">${icon('<path d="M4 19V5a1 1 0 011-1h11l4 4v11a1 1 0 01-1 1H5a1 1 0 01-1-1z" fill="none" stroke="#fff" stroke-width="1.6"/>',28)}</div>
+      <div><div style="font-size:19px;font-weight:800;color:#17564D;">سؤال واحد قبل أن نبدأ</div><div style="font-size:14px;color:#5E6C72;margin-top:8px;">لنختار لك أفضل نقطة بداية</div></div>
+      <div class="card" style="border-radius:20px;"><div style="font-size:34px;font-weight:800;line-height:1.6;">مدرسة</div></div>
+      <div style="font-size:15px;font-weight:700;color:#26333B;">هل تستطيع قراءة هذه الكلمة؟</div>
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <button class="btn-primary" data-act="placementeasy">نعم، بسهولة</button>
+        <button class="btn-outline" data-act="placementhard">أستطيع لكن بصعوبة</button>
+        <button class="btn-outline" data-act="placementno" style="border-color:#B4802E;color:#B4802E;">لا، لا أعرف الحروف بعد</button>
+      </div>
+    </div>`;
+  } else if (s.screen === 'level0-map') {
+    const pct = Math.round((s.level0Index/28)*100);
+    content = `<div style="flex:1;display:flex;flex-direction:column;padding:20px 18px;gap:16px;">
+      <div class="card" style="background:${trackDef.accentSoft};border-color:${trackDef.accent};">
+        <div style="font-size:14px;font-weight:800;color:#26333B;">رحلة الحروف العربية</div>
+        <div style="font-size:12px;color:#3F4B50;margin-top:6px;">خطوة بخطوة، بلا عجلة — ستعرف كل حرف وصوته وأشكاله</div>
+        <div style="height:8px;border-radius:5px;background:#fff;overflow:hidden;margin-top:12px;"><div style="height:100%;width:${pct}%;background:${trackDef.accent};border-radius:5px;"></div></div>
+        <div style="font-size:12px;color:#5E6C72;margin-top:6px;">${toArabicNum(s.level0Index)} من ٢٨ حرفًا</div>
+      </div>
+      ${s.level0WeakLetters && s.level0WeakLetters.length ? `<div class="card">
+        <div style="font-size:13px;font-weight:700;margin-bottom:10px;">🔁 حروف تحتاج مراجعة</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          ${s.level0WeakLetters.map(c=>`<button data-act="openlevel0review" data-letter="${c}" style="width:44px;height:44px;border-radius:12px;border:2px solid #B4802E;background:#F2E6CC;font-size:20px;font-weight:800;cursor:pointer;">${c}</button>`).join('')}
+        </div>
+      </div>` : ''}
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;">
+        ${LEVEL0_LETTERS.map((L,i)=>{
+          const done = i < s.level0Index; const current = i === s.level0Index; const locked = i > s.level0Index;
+          const bg = done ? '#DCEFE1' : current ? trackDef.accentSoft : '#F1EAD9';
+          const bd = done ? '#3F8F5F' : current ? trackDef.accent : '#E4D9C2';
+          return `<button data-act="${locked?'':'openlevel0letter'}" data-id="${i}" style="aspect-ratio:1;border-radius:14px;border:2px solid ${bd};background:${bg};display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:800;cursor:${locked?'default':'pointer'};color:${locked?'#B7AD91':'#1A2529'};opacity:${locked?0.55:1};">${locked?icon('<path d="M6 10V7a6 6 0 0112 0v3M5 10h14a1 1 0 011 1v9a1 1 0 01-1 1H5a1 1 0 01-1-1v-9a1 1 0 011-1z" fill="none" stroke="#B7AD91" stroke-width="1.6"/>',16):L.c}</button>`;
+        }).join('')}
+      </div>
+    </div>`;
+  } else if (s.screen === 'level0-letter') {
+    const L = LEVEL0_LETTERS[s.level0ViewIndex];
+    content = `<div style="flex:1;display:flex;flex-direction:column;padding:22px 18px;gap:18px;">
+      <div class="card" style="text-align:center;border-radius:22px;padding:32px 18px;">
+        <div style="font-size:72px;font-weight:800;color:${trackDef.accent};line-height:1;">${L.c}</div>
+        <div style="font-size:15px;color:#5E6C72;margin-top:10px;">حرف ال${L.name}</div>
+      </div>
+      <button data-act="level0playletter" style="height:50px;border-radius:14px;border:1px solid #E4D9C2;background:#fff;display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;">${icon('<path d="M8 5v14l11-7z" fill="#1F6B63"/>',18)}<span style="font-size:14px;font-weight:700;">اسمع نطق الحرف</span></button>
+      <div class="card">
+        <div style="font-size:13px;font-weight:700;color:#5E6C72;margin-bottom:10px;">أشكال الحرف</div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;text-align:center;">
+          <div><div style="font-size:26px;font-weight:700;">${L.iso}</div><div style="font-size:10px;color:#8A968C;margin-top:4px;">منفصل</div></div>
+          <div><div style="font-size:26px;font-weight:700;">${L.init}</div><div style="font-size:10px;color:#8A968C;margin-top:4px;">أول الكلمة</div></div>
+          <div><div style="font-size:26px;font-weight:700;">${L.med}</div><div style="font-size:10px;color:#8A968C;margin-top:4px;">وسط الكلمة</div></div>
+          <div><div style="font-size:26px;font-weight:700;">${L.fin}</div><div style="font-size:10px;color:#8A968C;margin-top:4px;">آخر الكلمة</div></div>
+        </div>
+      </div>
+      <button data-act="level0playword" style="background:${trackDef.accentSoft};border:none;border-radius:16px;padding:16px;text-align:center;cursor:pointer;">
+        <div style="font-size:12px;color:#5E6C72;margin-bottom:6px;">كلمة تحتوي الحرف</div>
+        <div style="font-size:24px;font-weight:800;color:#26333B;">${L.word}</div>
+      </button>
+      <button class="btn-primary" data-act="level0gotoquiz" style="margin-top:auto;">التالي: تمرين قصير</button>
+    </div>`;
+  } else if (s.screen === 'level0-quiz') {
+    content = `<div style="flex:1;display:flex;flex-direction:column;padding:22px 18px;gap:20px;">
+      <div style="text-align:center;font-size:15px;color:#5E6C72;">استمع جيدًا ثم اضغط على الحرف الذي سمعته</div>
+      <button data-act="level0playquiz" style="width:96px;height:96px;border-radius:50%;border:none;background:${trackDef.accent};cursor:pointer;display:flex;align-items:center;justify-content:center;margin:0 auto;">${icon('<path d="M8 5v14l11-7z" fill="#fff"/>',34)}</button>
+      ${s.level0QuizFeedback==='wrong' ? `<div style="text-align:center;font-size:14px;color:#B4802E;font-weight:700;">ليس تمامًا — حاول مجددًا</div>` : ''}
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;">
+        ${s.level0QuizLetters.map(c=>`<button data-act="level0choose" data-letter="${c}" style="aspect-ratio:1;border-radius:16px;border:2px solid #C7BA9C;background:#fff;font-size:34px;font-weight:800;cursor:pointer;box-shadow:0 2px 6px rgba(26,37,41,.05);">${c}</button>`).join('')}
+      </div>
+    </div>`;
+  } else if (s.screen === 'level0-complete') {
+    content = `<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;text-align:center;padding:32px;">
+      <div style="width:80px;height:80px;border-radius:50%;background:#3F8F5F;display:flex;align-items:center;justify-content:center;">${icon('<path d="M5 12l5 5L19 7" stroke="#fff" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>',34)}</div>
+      <div style="font-size:20px;font-weight:800;">أتقنت الحروف العربية كلها! 🌿</div>
+      <div style="font-size:14px;color:#5E6C72;line-height:1.7;max-width:280px;">حان الوقت لبدء قراءة الكلمات والجمل في دروسك</div>
+      <button class="btn-primary" data-act="gohome" style="width:100%;">ابدأ الدرس الأول</button>
+    </div>`;
+  } else if (s.screen === 'public-share') {
     const share = s.publicShare;
     if (!share || share.error) {
       content = `<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px;gap:14px;text-align:center;"><div style="font-size:16px;font-weight:700;">رابط غير صالح أو منتهي الصلاحية</div></div>`;
@@ -507,6 +663,7 @@ function screens() {
     content = `<div style="flex:1;display:flex;flex-direction:column;padding:20px 18px;gap:18px;">
       <div style="display:flex;justify-content:space-between;align-items:center;"><div><div style="font-size:18px;font-weight:800;color:#26333B;">أهلاً بعودتك</div><div style="font-size:13px;color:#5E6C72;">استمر من حيث توقفت</div></div>${s.streak>0?`<div style="display:flex;align-items:center;gap:6px;background:${trackDef.accentSoft};border-radius:12px;padding:8px 12px;"><div style="width:8px;height:8px;border-radius:50%;background:${trackDef.accent};"></div><div style="font-size:13px;font-weight:700;color:#26333B;">${toArabicNum(s.streak)} ${s.streak===1?'يوم':'أيام'} متتالية</div></div>`:''}</div>
       ${pendingLevel ? `<button data-act="openreadiness" data-id="${pendingLevel}" style="background:${trackDef.accent};border:none;border-radius:16px;padding:16px;text-align:right;cursor:pointer;color:#fff;"><div style="font-size:14px;font-weight:800;">أكملت المستوى الحالي! 🎉</div><div style="font-size:13px;margin-top:4px;opacity:0.9;">اضغط هنا لتحقق قصير يفتح المستوى التالي</div></button>` : ''}
+      ${s.reviewLessonId ? `<button data-act="openlesson" data-id="${s.reviewLessonId}" style="background:#F2E6CC;border:2px solid #B4802E;border-radius:16px;padding:14px 16px;text-align:right;cursor:pointer;"><div style="font-size:13px;font-weight:800;color:#26333B;">🔁 يحتاج مراجعة</div><div style="font-size:13px;margin-top:4px;color:#5E6C72;">${(LESSONS.find(l=>l.id===s.reviewLessonId)||{}).title||''}</div></button>` : ''}
       <div class="card" style="border-radius:20px;">
         <div style="font-size:13px;color:#8A968C;">الدرس التالي</div>
         <div style="font-size:19px;font-weight:800;color:#26333B;margin:8px 0 14px;">${currentLesson.title}</div>
@@ -591,6 +748,7 @@ function screens() {
         <button data-act="setnonnative" style="height:54px;border-radius:12px;border:2px solid ${track==='nonnative'?TRACKS.nonnative.accent:'#C7BA9C'};background:${track==='nonnative'?TRACKS.nonnative.accentSoft:'#fff'};font-size:15px;font-weight:700;cursor:pointer;color:#1A2529;">تعلّم من الصفر</button>
       </div></div>
       <button data-act="logout" style="height:54px;border-radius:12px;border:2px solid #C7BA9C;background:#fff;color:#C0392B;font-size:15px;font-weight:700;cursor:pointer;">تسجيل الخروج</button>
+      <button data-act="openlevel0map" style="height:54px;border-radius:12px;border:2px solid #C7BA9C;background:#fff;color:#1A2529;font-size:15px;font-weight:700;cursor:pointer;">مراجعة الحروف الهجائية</button>
       <div class="card">
         <div style="font-size:14px;font-weight:700;margin-bottom:4px;">متابعة من الأهل</div>
         <div style="font-size:12px;color:#5E6C72;margin-bottom:12px;line-height:1.6;">شارك رابطًا للقراءة فقط يعرض تقدّمك لمن تحب.</div>
@@ -735,6 +893,63 @@ document.getElementById('app').addEventListener('click', async (e) => {
   const act = btn.dataset.act;
   const id = btn.dataset.id ? Number(btn.dataset.id) : null;
   if (act==='goauth') state.screen='auth-phone';
+  else if (act==='placementeasy' || act==='placementhard' || act==='placementno') {
+    state.needsLevel0 = act==='placementno';
+    saveProfile({ placement_done: true, needs_level0: state.needsLevel0 });
+    state.screen='test';
+  }
+  else if (act==='openlevel0map') { state.screen='level0-map'; }
+  else if (act==='openlevel0letter') { state.level0ViewIndex=id; state.screen='level0-letter'; }
+  else if (act==='level0playletter') { const L=LEVEL0_LETTERS[state.level0ViewIndex]; speakTextEL(L.name); return; }
+  else if (act==='level0playword') { const L=LEVEL0_LETTERS[state.level0ViewIndex]; speakTextEL(L.word); return; }
+  else if (act==='level0gotoquiz') {
+    const idx = state.level0ViewIndex;
+    const correct = LEVEL0_LETTERS[idx].c;
+    const pool = LEVEL0_LETTERS.filter((_,i)=>i!==idx).map(l=>l.c);
+    const distractors = pool.sort(()=>Math.random()-0.5).slice(0,2);
+    state.level0QuizLetters = [correct, ...distractors].sort(()=>Math.random()-0.5);
+    state.level0QuizCorrect = correct;
+    state.level0QuizFeedback = '';
+    state.level0ReviewMode = false;
+    state.screen = 'level0-quiz';
+  }
+  else if (act==='openlevel0review') {
+    const letter = btn.dataset.letter;
+    const idx = LEVEL0_LETTERS.findIndex(l=>l.c===letter);
+    state.level0ViewIndex = idx;
+    const pool = LEVEL0_LETTERS.filter((_,i)=>i!==idx).map(l=>l.c);
+    const distractors = pool.sort(()=>Math.random()-0.5).slice(0,2);
+    state.level0QuizLetters = [letter, ...distractors].sort(()=>Math.random()-0.5);
+    state.level0QuizCorrect = letter;
+    state.level0QuizFeedback = '';
+    state.level0ReviewMode = true;
+    state.screen = 'level0-quiz';
+  }
+  else if (act==='level0playquiz') { speakTextEL(LEVEL0_LETTERS[state.level0ViewIndex].name); return; }
+  else if (act==='level0choose') {
+    const letter = btn.dataset.letter;
+    if (letter === state.level0QuizCorrect) {
+      if (state.level0ReviewMode) {
+        state.level0WeakLetters = state.level0WeakLetters.filter(c=>c!==letter);
+        saveProfile({ level0_weak_letters: state.level0WeakLetters });
+        state.screen = 'level0-map';
+      } else {
+        const idx = state.level0ViewIndex;
+        if (idx === state.level0Index) {
+          state.level0Index = idx + 1;
+          saveProfile({ level0_index: state.level0Index });
+          if (state.level0Index >= 28) { state.needsLevel0 = false; saveProfile({ needs_level0: false }); state.screen = 'level0-complete'; }
+          else state.screen = 'level0-map';
+        } else { state.screen = 'level0-map'; }
+      }
+    } else {
+      state.level0QuizFeedback = 'wrong';
+      if (!state.level0WeakLetters.includes(state.level0QuizCorrect)) {
+        state.level0WeakLetters = [...state.level0WeakLetters, state.level0QuizCorrect];
+        saveProfile({ level0_weak_letters: state.level0WeakLetters });
+      }
+    }
+  }
   else if (act==='openreadiness') { state.screen='readiness'; state.readinessTargetLevel=Number(id); state.fluencyStage='idle'; state.fluencyElapsed=0; }
   else if (act==='startreadinessreading') {
     state.fluencyStage='reading'; state.fluencyElapsed=0; render();
@@ -751,8 +966,8 @@ document.getElementById('app').addEventListener('click', async (e) => {
   else if (act==='sendotp') return sendOtp();
   else if (act==='verifyotp') return verifyOtp();
   else if (act==='backtophone') { state.screen='auth-phone'; state.otpCode=''; state.authError=''; }
-  else if (act==='setelder') { state.track='elder'; state.screen='home'; state.activeTab='home'; state.highlightMode='letter'; saveProfile({track:'elder'}); }
-  else if (act==='setnonnative') { state.track='nonnative'; state.screen='home'; state.activeTab='home'; state.highlightMode='word'; saveProfile({track:'nonnative'}); }
+  else if (act==='setelder') { state.track='elder'; state.screen=state.needsLevel0?'level0-map':'home'; state.activeTab='home'; state.highlightMode='letter'; saveProfile({track:'elder'}); }
+  else if (act==='setnonnative') { state.track='nonnative'; state.screen=state.needsLevel0?'level0-map':'home'; state.activeTab='home'; state.highlightMode='word'; saveProfile({track:'nonnative'}); }
   else if (act==='gohome') { state.screen='home'; state.activeTab='home'; }
   else if (act==='golessons') { state.screen='lessons'; state.activeTab='lessons'; }
   else if (act==='goscenarios') { state.screen='scenarios'; state.activeTab='scenarios'; }
@@ -761,7 +976,7 @@ document.getElementById('app').addEventListener('click', async (e) => {
   else if (act==='openlesson') { state.currentLessonId=id; state.screen='lesson'; state.highlightMode = state.track==='elder'?'letter':'word'; state._playing=false; state._playIdx=-1; render(); autoPlayCurrent(); return; }
   else if (act==='openmimicry') { if(id) state.currentLessonId=id; state.screen='mimicry'; state.mimicryStage='idle'; }
   else if (act==='openscenario') { state.activeScenarioId=id; state.screen='scenario-detail'; state._playing=false; state._playIdx=-1; render(); autoPlayCurrent(); return; }
-  else if (act==='back') { if(['lesson','fluency','readiness'].includes(state.screen)) state.screen='home'; else if(state.screen==='mimicry') state.screen='lesson'; else if(state.screen==='scenario-detail') state.screen='scenarios'; else state.screen=state.activeTab; state._playing=false; stopSpeaking(); if(playTimer) clearInterval(playTimer); }
+  else if (act==='back') { if(['lesson','fluency','readiness'].includes(state.screen)) state.screen='home'; else if(state.screen==='mimicry') state.screen='lesson'; else if(state.screen==='scenario-detail') state.screen='scenarios'; else if(state.screen==='level0-letter') state.screen='level0-map'; else if(state.screen==='level0-quiz') state.screen='level0-letter'; else state.screen=state.activeTab; state._playing=false; stopSpeaking(); if(playTimer) clearInterval(playTimer); }
   else if (act==='fontup') { state.fontScaleIdx=Math.min(2,state.fontScaleIdx+1); saveProfile({font_scale:FONT_SCALES[state.fontScaleIdx]}); }
   else if (act==='fontdown') { state.fontScaleIdx=Math.max(0,state.fontScaleIdx-1); saveProfile({font_scale:FONT_SCALES[state.fontScaleIdx]}); }
   else if (act==='setfont') { state.fontScaleIdx=Number(btn.dataset.idx); saveProfile({font_scale:FONT_SCALES[state.fontScaleIdx]}); }
